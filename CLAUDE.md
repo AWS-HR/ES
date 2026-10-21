@@ -15,6 +15,7 @@
 | `skill/SKILL.md` | ES採点スキル。claude.ai に保存して使う（このファイルが原本） |
 | `tests/` | `logic.test.js`（計算ロジック）、`make-preview.js` + `shoot.js`（サンプルデータで画面を描画） |
 | `.github/workflows/deploy.yml` | main への push でテスト → clasp push → Webアプリ更新 |
+| `.github/scripts/normalize-clasprc.js` | Secrets の `.clasprc.json`（clasp 2系・3系）を clasp 2.4.2 の形式にそろえる |
 
 ## 作業のルール
 
@@ -32,6 +33,7 @@
 
 ```
 node tests/logic.test.js src/Code.gs
+node tests/clasprc.test.js
 node tests/make-preview.js src/Index.html /tmp/preview.html && node tests/shoot.js /tmp/preview.html /tmp/shots
 ```
 

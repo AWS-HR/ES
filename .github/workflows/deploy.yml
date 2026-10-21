@@ -17,6 +17,8 @@ jobs:
           node-version: 20
       - name: 計算ロジックのテスト
         run: node tests/logic.test.js src/Code.gs
+      - name: 認証情報の形式変換のテスト
+        run: node tests/clasprc.test.js
 
   deploy:
     name: GASへ反映してWebアプリを更新
@@ -54,7 +56,8 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
         run: |
-          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          # clasp 3 で作った .clasprc.json も読めるように、clasp 2 の形式にそろえる
+          printf '%s' "$CLASPRC_JSON" | node .github/scripts/normalize-clasprc.js > "$HOME/.clasprc.json"
           printf '{"scriptId":"%s","rootDir":"src"}' "$GAS_SCRIPT_ID" > .clasp.json
 
       - name: コードをGASへ反映（clasp push）
