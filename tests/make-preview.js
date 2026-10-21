@@ -30,7 +30,7 @@ const S = '2028年卒 新卒（総合職）', C = '経験者採用';
 const data = {
   user: { email: 'a@example.com', name: '採用 太郎', role: '管理者' }, canEdit: true,
   statusOptions: ['未確認', '確認済み', '通過', '見送り'],
-  scoring: { schedule: { dailyTime: '18:00', checkEveryMinutes: 60, checkHours: '8〜20時' }, unscored: 12, open: null,
+  scoring: { schedule: { label: '毎日 18:00' }, unscored: 12, running: null,
     last: { state: '完了', finishedAt: '2026/10/20 18:12', result: '採点済み 8件、要確認 1件、残り 0件' } },
   segments: [{ id: 'R2028', name: S, state: '受付中' }, { id: 'R2029', name: '2029年卒 新卒（総合職）', state: '準備中' }, { id: 'CAREER', name: C, state: '受付中' }],
   applicants: [
@@ -49,9 +49,7 @@ window.google = { script: { run: (function make(ok, ng) {
     withSuccessHandler: f => make(f, ng), withFailureHandler: f => make(ok, f),
     apiLoad: () => setTimeout(() => ok(${JSON.stringify(data)}), 0),
     apiUpdate: (id, p) => setTimeout(() => ok(p), 0),
-    apiGetPdf: () => {},
-    apiRequestScoring: () => setTimeout(() => ok(Object.assign({}, ${JSON.stringify(data)}.scoring,
-      { open: { id: 'REQ-1', state: '待機中', requestedAt: '2026/10/21 12:20', by: '採用 太郎' } })), 0)
+    apiGetPdf: () => {}
   };
   return api;
 })() } };

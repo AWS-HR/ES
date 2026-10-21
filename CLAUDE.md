@@ -9,7 +9,7 @@
 
 | パス | 内容 |
 | --- | --- |
-| `src/Code.gs` | GASのサーバー側。シートの初期設定、Webアプリ、API（apiLoad / apiUpdate / apiRequestScoring / apiGetPdf） |
+| `src/Code.gs` | GASのサーバー側。シートの初期設定、Webアプリ、API（apiLoad / apiUpdate / apiGetPdf） |
 | `src/Index.html` | 閲覧アプリの画面（一覧・詳細・比較）。外部ライブラリなし |
 | `src/appsscript.json` | GASのマニフェスト（Webアプリ：実行ユーザー＝デプロイした人、アクセス＝組織内） |
 | `skill/SKILL.md` | ES採点スキル。claude.ai に保存して使う（このファイルが原本） |

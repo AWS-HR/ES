@@ -11,10 +11,6 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: `${outDir}/${label}-list.png`, fullPage: true });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     if (overflow) errors.push(label + ': page scrolls horizontally');
-    // 「評価する」→ 依頼済みになる
-    await page.click('#req-scoring');
-    await page.waitForSelector('.scorebar button[disabled]');
-    await page.screenshot({ path: `${outDir}/${label}-requested.png`, fullPage: false });
     // 比較：3人を選ぶ
     for (let i = 0; i < 3; i++) { await page.locator("input[data-pick]").nth(i).click(); }
     await page.click('[data-view-go="compare"]');

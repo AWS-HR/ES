@@ -17,7 +17,7 @@ var SHEET = {
   CRITERIA: '評価基準',
   QUESTIONS: '設問',
   ACCESS: '権限',
-  REQUESTS: '採点依頼'
+  RUNS: '採点記録'
 };
 
 var HEADERS = {};
@@ -30,20 +30,20 @@ HEADERS[SHEET.CRITERIA] = ['評価基準', '軸ID', '軸名', '略称', 'ここ�
   '段階5', '段階4', '段階3', '段階2', '段階1', '表示順'];
 HEADERS[SHEET.QUESTIONS] = ['設問セット', '番号', '設問', '主に読み取る軸ID'];
 HEADERS[SHEET.ACCESS] = ['メールアドレス', '氏名', '役割', '備考'];
-HEADERS[SHEET.REQUESTS] = ['依頼ID', '依頼日時', '依頼者', '状態', '開始日時', '完了日時', '結果'];
+HEADERS[SHEET.RUNS] = ['記録ID', '開始日時', '完了日時', '実行方法', '状態', '結果'];
 
 var STATUS_OPTIONS = ['未確認', '確認済み', '通過', '見送り'];
 var PROCESS_STATES = ['採点済み', '要確認'];
 var SEGMENT_STATES = ['受付中', '準備中', '終了'];
 var ROLES = ['管理者', '評価者', '閲覧者', '停止'];
 var EDIT_ROLES = ['管理者', '評価者'];
-var REQUEST_STATES = ['待機中', '処理中', '完了', 'エラー'];
+var RUN_STATES = ['処理中', '完了', 'エラー'];
 
 /**
- * 自動採点のスケジュール（Claudeのスケジュールタスク側の設定と合わせる）。
- * 定時採点の時刻と、「評価する」ボタンの依頼を確認する間隔を画面に表示するために使う。
+ * 自動採点のスケジュール（画面に表示するだけ）。
+ * 実際の実行時刻はClaudeのスケジュールタスクで決まるので、変更するときは両方をそろえる（docs/定時採点タスク.md）。
  */
-var AUTO_SCORING = { dailyTime: '18:00', checkEveryMinutes: 60, checkHours: '8〜20時' };
+var AUTO_SCORING = { label: '毎日 18:00' };
 
 /** 関連する記述が見当たらない軸の段階。得点計算では段階3（中間）として扱う */
 var NO_EVIDENCE = '記述不足';
@@ -141,7 +141,7 @@ function setupSpreadsheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
 
-  var order = [SHEET.RESULTS, SHEET.DETAILS, SHEET.SEGMENTS, SHEET.CRITERIA, SHEET.QUESTIONS, SHEET.ACCESS, SHEET.REQUESTS];
+  var order = [SHEET.RESULTS, SHEET.DETAILS, SHEET.SEGMENTS, SHEET.CRITERIA, SHEET.QUESTIONS, SHEET.ACCESS, SHEET.RUNS];
   var seeds = {};
   seeds[SHEET.CRITERIA] = SEED_CRITERIA;
   seeds[SHEET.QUESTIONS] = SEED_QUESTIONS;
@@ -215,12 +215,12 @@ function formatSheet_(sh, name) {
   } else if (name === SHEET.ACCESS) {
     list('役割', ROLES);
     sh.setColumnWidth(col('メールアドレス'), 260);
-    sh.getRange(1, 1).setNote('管理者：閲覧・ステータス・メモ入力・採点依頼\n評価者：閲覧・ステータス・メモ入力・採点依頼\n閲覧者：閲覧のみ\n停止：アクセス不可（履歴として行を残す）');
-  } else if (name === SHEET.REQUESTS) {
-    list('状態', REQUEST_STATES);
-    sh.setColumnWidth(col('依頼者'), 220);
+    sh.getRange(1, 1).setNote('管理者：閲覧・ステータス・メモ入力\n評価者：閲覧・ステータス・メモ入力\n閲覧者：閲覧のみ\n停止：アクセス不可（履歴として行を残す）');
+  } else if (name === SHEET.RUNS) {
+    list('状態', RUN_STATES);
+    sh.setColumnWidth(col('実行方法'), 160);
     wrap(['結果'], 360);
-    sh.getRange(1, 1).setNote('閲覧アプリの「評価する」ボタンと、18時の定時採点の記録です。\n「待機中」の行があると、次の確認時（1時間ごと）にClaudeが採点を始めます。');
+    sh.getRange(1, 1).setNote('Claudeが採点を実行した記録です（定時採点・手動の依頼）。Claudeが書き込むので、手で編集する必要はありません。');
   }
 }
 
@@ -283,48 +283,24 @@ function apiLoad() {
   };
 }
 
-/**
- * 「評価する」ボタン：採点依頼シートに「待機中」の依頼を1行追加する（管理者・評価者のみ）。
- * Claudeのスケジュールタスクが1時間ごとにこのシートを確認し、待機中の依頼があれば採点を始める。
- * すでに待機中・処理中の依頼があるときは、新しい行を追加せず現在の状態を返す。
- */
-function apiRequestScoring() {
-  var user = requireUser_();
-  if (EDIT_ROLES.indexOf(user.role) < 0) throw new Error('採点を依頼する権限がありません。');
-  var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-  try {
-    var open = findOpenRequest_(readTable_(SHEET.REQUESTS));
-    if (!open) {
-      var sh = getSpreadsheet_().getSheetByName(SHEET.REQUESTS);
-      if (!sh) throw new Error('「採点依頼」シートがありません。管理者がメニュー「ES採点」→「初期設定」を実行してください。');
-      var now = new Date();
-      var id = 'REQ-' + Utilities.formatDate(now, 'Asia/Tokyo', 'yyyyMMdd-HHmmss');
-      sh.appendRow([id, now, user.name + '（' + user.email + '）', '待機中', '', '', '']);
-    }
-    return getScoringStatus_();
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-/** 画面に表示する採点の状況：未採点の件数、進行中の依頼、前回の結果 */
+/** 画面に表示する採点の状況：未採点の件数、実行中の採点、前回の結果、スケジュール */
 function getScoringStatus_() {
-  var requests = readTable_(SHEET.REQUESTS);
-  var open = findOpenRequest_(requests);
-  var done = requests.filter(function (r) { return r['状態'] === '完了' || r['状態'] === 'エラー'; });
+  var runs = readTable_(SHEET.RUNS);
+  var running = findRunning_(runs);
+  var done = runs.filter(function (r) { return r['状態'] === '完了' || r['状態'] === 'エラー'; });
   var last = done.length ? done[done.length - 1] : null;
   return {
     schedule: AUTO_SCORING,
     unscored: countUnscored_(),
-    open: open ? { id: str_(open['依頼ID']), state: str_(open['状態']), requestedAt: formatDate_(open['依頼日時']), by: str_(open['依頼者']).replace(/（.*）$/, '') } : null,
+    running: running ? { startedAt: formatDate_(running['開始日時']), how: str_(running['実行方法']) } : null,
     last: last ? { state: str_(last['状態']), finishedAt: formatDate_(last['完了日時']), result: str_(last['結果']) } : null
   };
 }
 
-/** 待機中または処理中の依頼のうち最も古いもの */
-function findOpenRequest_(rows) {
-  return rows.filter(function (r) { return r['状態'] === '待機中' || r['状態'] === '処理中'; })[0] || null;
+/** 処理中の採点記録のうち最も新しいもの */
+function findRunning_(rows) {
+  var list = rows.filter(function (r) { return r['状態'] === '処理中'; });
+  return list.length ? list[list.length - 1] : null;
 }
 
 /** 受付中の区分のフォルダにあるPDFのうち、まだ採点結果にないものの件数（数えられない場合は null） */

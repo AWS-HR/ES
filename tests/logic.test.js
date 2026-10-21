@@ -66,14 +66,15 @@ assert.strictEqual(ctx.folderIdFromUrl_('1AbC_d-EfGhIjKlMn'), '1AbC_d-EfGhIjKlMn
 assert.strictEqual(ctx.folderIdFromUrl_(''), '');
 assert.strictEqual(ctx.folderIdFromUrl_('フォルダ'), '');
 
-// 採点依頼：待機中・処理中のうち最も古いもの
-const reqs = [{ '依頼ID': 'R1', '状態': '完了' }, { '依頼ID': 'R2', '状態': '待機中' }, { '依頼ID': 'R3', '状態': '待機中' }];
-assert.strictEqual(ctx.findOpenRequest_(reqs)['依頼ID'], 'R2');
-assert.strictEqual(ctx.findOpenRequest_([{ '状態': '完了' }, { '状態': 'エラー' }]), null);
+// 採点記録：処理中のうち最も新しいもの
+const runs = [{ '記録ID': 'R1', '状態': '完了' }, { '記録ID': 'R2', '状態': '処理中' }, { '記録ID': 'R3', '状態': '処理中' }];
+assert.strictEqual(ctx.findRunning_(runs)['記録ID'], 'R3');
+assert.strictEqual(ctx.findRunning_([{ '状態': '完了' }, { '状態': 'エラー' }]), null);
 
 // シートの見出しと入力規則の対象列が一致している
 Object.keys(ctx.HEADERS).forEach(name => assert(new Set(ctx.HEADERS[name]).size === ctx.HEADERS[name].length, `${name} の見出しが重複`));
 ['ステータス', '処理状態'].forEach(h => assert(ctx.HEADERS['採点結果'].includes(h)));
-assert(ctx.HEADERS['採点依頼'].includes('状態'));
+assert(ctx.HEADERS['採点記録'].includes('状態'));
+assert.strictEqual(ctx.SHEET.REQUESTS, undefined, '採点依頼シートは廃止済み');
 
 console.log('OK: すべての検証に合格しました');

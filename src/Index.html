@@ -241,32 +241,22 @@
     return '<option value="' + esc(value) + '"' + (value === current ? ' selected' : '') + '>' + esc(label) + '</option>';
   }
 
-  // ─── 採点の状況と「評価する」ボタン ───
+  // ─── 採点の状況（自動採点の記録） ───
   function scoringPanel() {
-    var s = state.data.scoring, d = state.data;
+    var s = state.data.scoring;
     if (!s) return '';
-    var sch = s.schedule || {};
     var line;
-    if (s.open && s.open.state === '処理中') {
-      line = '<span class="pill s-未確認">採点中</span><span>Claudeが採点しています（' + esc(s.open.requestedAt) + ' 開始の依頼）</span>';
-    } else if (s.open) {
-      line = '<span class="pill s-確認済み">依頼済み</span><span>' + esc(s.open.by) + 'さんが ' + esc(s.open.requestedAt) +
-        ' に依頼しました。次の確認（' + esc(sch.checkHours || '') + '、' + (sch.checkEveryMinutes || 60) + '分ごと）で採点が始まります</span>';
+    if (s.running) {
+      line = '<span class="pill s-未確認">採点中</span><span>' + esc(s.running.startedAt) + ' から採点しています（' + esc(s.running.how) + '）</span>';
     } else if (s.last) {
       line = '<span class="meta">前回の採点：' + esc(s.last.finishedAt) + (s.last.state === 'エラー' ? '（エラー）' : '') + ' ' + esc(s.last.result) + '</span>';
     } else {
       line = '<span class="meta">まだ採点は実行されていません</span>';
     }
-    var btn = '';
-    if (d.canEdit) {
-      btn = s.open ? '<button type="button" class="btn primary" disabled>' + (s.open.state === '処理中' ? '採点中' : '依頼済み') + '</button>'
-        : '<button type="button" class="btn primary" id="req-scoring"' + (s.unscored === 0 ? ' disabled title="未採点のESはありません"' : '') + '>評価する</button>';
-    }
     return '<section class="card scorebar" aria-label="採点の状況">' +
       '<div class="info"><div class="count"><span class="meta">未採点のES </span><b>' + (s.unscored == null ? '–' : s.unscored) + '</b> 件</div>' + line + '</div>' +
-      '<div class="actions"><button type="button" class="btn quiet" id="reload">最新の状態に更新</button>' + btn + '</div>' +
-      '<p class="note" style="flex-basis:100%">自動採点：毎日 ' + esc(sch.dailyTime || '') + '。' +
-        (d.canEdit ? '「評価する」を押すと、1時間以内に採点が始まります（1回で最大10件。残りは続けて自動で採点します）。' : '') + '</p>' +
+      '<div class="actions"><button type="button" class="btn quiet" id="reload">最新の状態に更新</button></div>' +
+      '<p class="note" style="flex-basis:100%">自動採点：' + esc((s.schedule && s.schedule.label) || '') + '。未採点のESは次の自動採点で順に採点されます。</p>' +
       '</section>';
   }
 
@@ -515,15 +505,6 @@
       }, 250);
     });
 
-    var req = document.getElementById('req-scoring');
-    if (req) req.addEventListener('click', function () {
-      req.disabled = true;
-      call('apiRequestScoring', [], function (s) {
-        state.data.scoring = s;
-        render();
-        toast('採点を依頼しました。1時間以内に始まります');
-      });
-    });
     var reload = document.getElementById('reload');
     if (reload) reload.addEventListener('click', function () { reload.disabled = true; load(); toast('最新の状態に更新しています'); });
 

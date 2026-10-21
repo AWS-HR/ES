@@ -31,25 +31,38 @@ jobs:
         with:
           node-version: 20
 
-      - name: clasp を準備
-        run: npm install -g @google/clasp@2.4.2
-
-      - name: 認証情報とプロジェクト設定を書き出す
+      - name: Secrets の確認
+        id: check
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
         run: |
           if [ -z "$CLASPRC_JSON" ] || [ -z "$GAS_SCRIPT_ID" ]; then
-            echo "::error::GitHub の Secrets（CLASPRC_JSON / GAS_SCRIPT_ID）が未設定です。docs/自動デプロイ設定.md を参照してください。"
-            exit 1
+            echo "::warning::GitHub の Secrets（CLASPRC_JSON / GAS_SCRIPT_ID）が未設定のため、GASへの反映をスキップしました。docs/自動デプロイ設定.md を参照してください。"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: clasp を準備
+        if: steps.check.outputs.ready == 'true'
+        run: npm install -g @google/clasp@2.4.2
+
+      - name: 認証情報とプロジェクト設定を書き出す
+        if: steps.check.outputs.ready == 'true'
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           printf '{"scriptId":"%s","rootDir":"src"}' "$GAS_SCRIPT_ID" > .clasp.json
 
       - name: コードをGASへ反映（clasp push）
+        if: steps.check.outputs.ready == 'true'
         run: clasp push --force
 
       - name: Webアプリを新しいバージョンで更新（URLは変わらない）
+        if: steps.check.outputs.ready == 'true'
         env:
           GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
         run: |
