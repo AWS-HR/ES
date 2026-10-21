@@ -30,7 +30,7 @@ const S = '2028年卒 新卒（総合職）', C = '経験者採用';
 const data = {
   user: { email: 'a@example.com', name: '採用 太郎', role: '管理者' }, canEdit: true,
   statusOptions: ['未確認', '確認済み', '通過', '見送り'],
-  scoring: { schedule: { label: '日中は8時・13時、18時〜翌8時は1時間ごと（1回最大10件）' }, unscored: 12, running: null,
+  scoring: { schedule: { label: '毎日 8時・13時（各10件）、18時（20件）' }, unscored: 12, running: null,
     last: { state: '完了', finishedAt: '2026/10/20 18:12', result: '採点済み 8件、要確認 1件、残り 0件' } },
   segments: [{ id: 'R2028', name: S, state: '受付中' }, { id: 'R2029', name: '2029年卒 新卒（総合職）', state: '準備中' }, { id: 'CAREER', name: C, state: '受付中' }],
   applicants: [
