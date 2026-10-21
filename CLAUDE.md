@@ -9,7 +9,8 @@
 
 | パス | 内容 |
 | --- | --- |
-| `src/Code.gs` | GASのサーバー側。シートの初期設定、Webアプリ、API（apiLoad / apiUpdate / apiGetPdf） |
+| `src/Config.gs` | 読み書きするスプレッドシート「ES自動評価アプリ」のID（SPREADSHEET_ID） |
+| `src/Code.gs` | GASのサーバー側。シートの初期設定（setupSpreadsheet）、Webアプリ、API（apiLoad / apiUpdate / apiGetPdf）。単独のスクリプトとして動き、スプレッドシートはIDで開く |
 | `src/Index.html` | 閲覧アプリの画面（一覧・詳細・比較）。外部ライブラリなし |
 | `src/appsscript.json` | GASのマニフェスト（Webアプリ：実行ユーザー＝デプロイした人、アクセス＝組織内） |
 | `skill/SKILL.md` | ES採点スキル。claude.ai に保存して使う（このファイルが原本） |
@@ -25,9 +26,10 @@
 - 評価基準を変えるときは既存の基準を書き換えず、新しい基準名（例：新卒総合職_v2）で追加する
 - `skill/SKILL.md` を変更したら、claude.ai でスキルを保存し直す必要があることを利用者に伝える
 - 画面に出す値は必ず `esc()` を通す（ESの内容やメモに任意の文字列が入るため）
-- 認証情報・スクリプトID・デプロイIDをコードやドキュメントに書かない（GitHub の Secrets を使う）
+- 認証情報・スクリプトID・デプロイIDをコードやドキュメントに書かない（GitHub の Secrets を使う）。スプレッドシートIDは設定として `src/Config.gs` に置く
 - 実在の応募者のデータをリポジトリ・テスト・スクリーンショットに含めない。テストはサンプルデータだけを使う
 - GASのエディタで直接編集しない（次の自動デプロイで上書きされる）
+- `SpreadsheetApp.getActiveSpreadsheet()` や `getUi()` に頼らない（単独のスクリプトでは使えない）。シートは `getSpreadsheet_()`、メッセージは `notify_()` を使う
 
 ## 確認方法
 

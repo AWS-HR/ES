@@ -1,9 +1,9 @@
 /**
  * ES採点ビューア ― 株式会社アワーズ 採用チーム
  *
- * スプレッドシートに紐づく Apps Script として使います。
- *   1. スプレッドシートを開き、メニュー「ES採点」→「初期設定（シートの作成）」を実行
- *   2. 「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」で閲覧アプリを公開
+ * 単独の Apps Script プロジェクトとして動き、Config.gs の SPREADSHEET_ID のスプレッドシートを読み書きします。
+ *   1. Apps Script のエディタで関数「setupSpreadsheet」を選んで実行（シートの作成）
+ *   2. 「デプロイ」→「ウェブアプリ」で閲覧アプリを公開
  *      （実行ユーザー：自分 ／ アクセスできるユーザー：組織内の全員）
  *   実際に誰が使えるかは「権限」シートで管理します。
  */
@@ -125,6 +125,7 @@ var SEED_SEGMENTS = [
 
 // ───────────────────────── メニュー・初期設定 ─────────────────────────
 
+/** スプレッドシートに付属するスクリプトとして使う場合だけ、メニューを表示する（単独のスクリプトでは動かない） */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('ES採点')
@@ -136,10 +137,10 @@ function onOpen() {
 /**
  * 7枚のシートを作成し、見出し・入力規則・初期データを設定する。
  * すでにデータが入っているシートは上書きしない（何度実行しても安全）。
+ * Apps Script のエディタで、関数「setupSpreadsheet」を選んで「実行」する。
  */
 function setupSpreadsheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+  var ss = getSpreadsheet_();
 
   var order = [SHEET.RESULTS, SHEET.DETAILS, SHEET.SEGMENTS, SHEET.CRITERIA, SHEET.QUESTIONS, SHEET.ACCESS, SHEET.RUNS];
   var seeds = {};
@@ -170,8 +171,8 @@ function setupSpreadsheet() {
     }
   });
 
-  SpreadsheetApp.getUi().alert(
-    '初期設定が完了しました。\n\n' +
+  notify_(
+    '初期設定が完了しました（' + ss.getName() + '）。\n\n' +
     '次の作業：\n' +
     '1.「選考区分」シートに、ESフォルダのURLを貼り付ける\n' +
     '2.「権限」シートに、閲覧アプリを使う人を追加する\n' +
@@ -242,7 +243,7 @@ function recalculateTotals() {
     sh.getRange(r._row, cRank).setValue(a.rank);
     updated++;
   });
-  SpreadsheetApp.getUi().alert(updated + '件の総合点とランクを更新しました。');
+  notify_(updated + '件の総合点とランクを更新しました。');
 }
 
 // ───────────────────────── Webアプリ ─────────────────────────
@@ -481,9 +482,21 @@ function buildApplicant_(r, details, criteria) {
 
 // ───────────────────────── シートの読み書き ─────────────────────────
 
+/** 読み書きするスプレッドシート（Config.gs の SPREADSHEET_ID） */
 function getSpreadsheet_() {
-  var id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-  return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
+  if (typeof SPREADSHEET_ID === 'string' && SPREADSHEET_ID) return SpreadsheetApp.openById(SPREADSHEET_ID);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('スプレッドシートが設定されていません。Config.gs の SPREADSHEET_ID を確認してください。');
+  return ss;
+}
+
+/** 完了メッセージ：スプレッドシートの画面から実行したときはダイアログ、エディタから実行したときは実行ログに出す */
+function notify_(msg) {
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch (e) {
+    Logger.log(msg);
+  }
 }
 
 /** シートを「見出し → 値」のオブジェクトの配列として読む（_row は行番号） */
