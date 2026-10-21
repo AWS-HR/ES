@@ -1,0 +1,64 @@
+name: テストとGASへのデプロイ
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: テスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 計算ロジックのテスト
+        run: node tests/logic.test.js src/Code.gs
+
+  deploy:
+    name: GASへ反映してWebアプリを更新
+    needs: test
+    # main への push と手動実行のときだけデプロイする（プルリクエストではテストのみ）
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency: gas-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: clasp を準備
+        run: npm install -g @google/clasp@2.4.2
+
+      - name: 認証情報とプロジェクト設定を書き出す
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ] || [ -z "$GAS_SCRIPT_ID" ]; then
+            echo "::error::GitHub の Secrets（CLASPRC_JSON / GAS_SCRIPT_ID）が未設定です。docs/自動デプロイ設定.md を参照してください。"
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '{"scriptId":"%s","rootDir":"src"}' "$GAS_SCRIPT_ID" > .clasp.json
+
+      - name: コードをGASへ反映（clasp push）
+        run: clasp push --force
+
+      - name: Webアプリを新しいバージョンで更新（URLは変わらない）
+        env:
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
+        run: |
+          if [ -z "$GAS_DEPLOYMENT_ID" ]; then
+            echo "::warning::GAS_DEPLOYMENT_ID が未設定のため、コードの反映のみ行いました（Webアプリは更新していません）。"
+            exit 0
+          fi
+          clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"
+
+      - name: 認証情報を削除
+        if: always()
+        run: rm -f "$HOME/.clasprc.json" .clasp.json

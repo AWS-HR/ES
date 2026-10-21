@@ -1,0 +1,9 @@
+{
+  "name": "ours-es-scoring",
+  "private": true,
+  "description": "株式会社アワーズ ES採点システム（GAS）",
+  "scripts": {
+    "test": "node tests/logic.test.js src/Code.gs",
+    "preview": "node tests/make-preview.js src/Index.html preview.html && node tests/shoot.js \"$PWD/preview.html\" shots"
+  }
+}

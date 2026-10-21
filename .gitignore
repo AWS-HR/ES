@@ -1,0 +1,7 @@
+node_modules/
+.clasp.json
+.clasprc.json
+*.log
+shots/
+preview.html
+.DS_Store

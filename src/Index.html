@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #F5F6F8; --card: #FFFFFF; --line: #E1E4E8; --line-soft: #EDEFF2;
+    --ink: #16191D; --ink-2: #3A414B; --muted: #5B6370; --field: #C9CED6;
+    --blue: #2457C5; --blue-dark: #1E3F91; --blue-soft: #E8EEFB; --blue-tint: #F1F5FD; --blue-light: #8FA9DE;
+    --orange: #C26A12; --slate: #2E3440;
+    --warn-bg: #FDF0E3; --warn-ink: #8A3D0C; --ok-bg: #E3F1EC; --ok-ink: #145C47; --gray-bg: #EEF0F2;
+    --mark: #FFF1B8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', 'Meiryo', system-ui, sans-serif;
+    font-size: 14px; line-height: 1.7; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--blue); }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  header.top { background: var(--card); border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding-top: 12px; padding-bottom: 12px; }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand b { font-size: 18px; letter-spacing: .02em; }
+  .brand span { font-size: 12px; color: var(--muted); }
+  nav.tabs { display: flex; gap: 4px; flex-grow: 1; }
+  nav.tabs button { border: 0; background: transparent; padding: 8px 14px; border-radius: 6px; color: var(--ink-2); cursor: pointer; min-height: 40px; }
+  nav.tabs button[aria-current="page"] { background: var(--blue-soft); color: var(--blue-dark); font-weight: 600; }
+  .who { font-size: 12px; color: var(--muted); }
+  main { padding: 24px 0 48px; }
+  main .wrap { display: flex; flex-direction: column; gap: 20px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.3; }
+  h2 { margin: 0; font-size: 16px; }
+  h3 { margin: 0; font-size: 15px; }
+  .sub { margin: 4px 0 0; color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; }
+  .between { justify-content: space-between; align-items: flex-end; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 12px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; min-width: 96px; }
+  .kpi small { display: block; font-size: 12px; color: var(--muted); }
+  .kpi b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .kpi b.warn { color: var(--warn-ink); }
+  .filters { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; }
+  .field.wide { flex: 2 1 220px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  .field input, .field select, select.plain { height: 44px; border: 1px solid var(--field); border-radius: 8px; padding: 0 10px; background: var(--card); }
+  .tablebox { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  table.list { min-width: 1080px; }
+  table.list th { background: #F9FAFB; text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 10px 8px; vertical-align: bottom; }
+  table.list th small { display: block; font-weight: 400; font-size: 11px; }
+  table.list td { padding: 12px 8px; border-top: 1px solid var(--line-soft); vertical-align: middle; }
+  table.list td.first, table.list th.first { padding-left: 16px; }
+  .namebtn { border: 0; background: none; padding: 0; color: var(--blue); font-weight: 700; font-size: 15px; cursor: pointer; text-align: left; }
+  .namebtn:hover { text-decoration: underline; }
+  .meta { font-size: 12px; color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+  .total { font-size: 22px; font-weight: 700; }
+  .rank { display: inline-block; min-width: 24px; text-align: center; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .rank.A { background: var(--blue-dark); color: #fff; }
+  .rank.B { background: var(--blue-soft); color: var(--blue-dark); }
+  .rank.C { background: var(--gray-bg); color: #444B55; }
+  .pill { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .pill.s-未確認 { background: var(--warn-bg); color: var(--warn-ink); }
+  .pill.s-確認済み { background: var(--gray-bg); color: var(--ink-2); }
+  .pill.s-通過 { background: var(--ok-bg); color: var(--ok-ink); }
+  .pill.s-見送り { background: var(--card); color: var(--muted); border: 1px solid var(--field); }
+  .pill.check { background: var(--warn-bg); color: var(--warn-ink); font-weight: 600; }
+  .mini { display: flex; align-items: center; gap: 6px; min-width: 64px; }
+  .mini .v { width: 12px; font-weight: 500; font-size: 13px; }
+  .mini .track { flex: 1; height: 6px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
+  .mini .bar { height: 100%; border-radius: 3px; }
+  .lv5 { background: var(--blue-dark); } .lv4 { background: var(--blue); } .lv3 { background: var(--blue-light); } .lv2, .lv1 { background: var(--field); }
+  .lvx { background: repeating-linear-gradient(45deg, var(--field) 0 3px, transparent 3px 6px); }
+  .chk { width: 20px; height: 20px; accent-color: var(--blue); cursor: pointer; }
+  .note { margin: 0; font-size: 12px; color: var(--muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 8px; cursor: pointer; font-weight: 500; text-decoration: none; }
+  .btn.primary { background: var(--blue); color: #fff; border: 0; }
+  .btn.outline { background: var(--card); color: var(--blue); border: 1px solid var(--blue); }
+  .btn.quiet { background: var(--card); color: var(--ink); border: 1px solid var(--field); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .back { align-self: flex-start; border: 0; background: none; color: var(--blue); cursor: pointer; padding: 8px 0; font-size: 13px; }
+  .hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; }
+  .hero h1 { font-size: 28px; }
+  .bigscore { font-variant-numeric: tabular-nums; line-height: 1; }
+  .bigscore b { font-size: 44px; }
+  .bigscore span { font-size: 15px; color: var(--muted); margin-left: 4px; }
+  .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .side { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+  .mainc { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .axis { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .axis .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+  .axis .head small { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .seg { display: flex; gap: 3px; }
+  .seg i { width: 18px; height: 8px; border-radius: 2px; background: var(--line); }
+  .seg i.lv5 { background: var(--blue-dark); } .seg i.lv4 { background: var(--blue); } .seg i.lv3 { background: var(--blue-light); }
+  .seg i.lv2, .seg i.lv1 { background: #9AA3AF; }
+  .axis p { margin: 0; }
+  blockquote { margin: 0; padding: 10px 14px; background: #F9FAFB; border-radius: 8px; font-size: 13px; color: var(--ink-2); white-space: pre-wrap; }
+  blockquote .src { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; white-space: normal; }
+  mark { background: var(--mark); color: inherit; padding: 0 2px; border-radius: 2px; }
+  ul.tight { margin: 0; padding-left: 18px; }
+  textarea { width: 100%; border: 1px solid var(--field); border-radius: 8px; padding: 10px 12px; resize: vertical; min-height: 96px; }
+  .alert { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px 16px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: 999px; border: 2px solid; background: var(--card); }
+  .chip button { width: 36px; height: 36px; border: 0; background: transparent; border-radius: 999px; cursor: pointer; color: var(--muted); font-size: 16px; }
+  table.cmp { min-width: 480px; font-variant-numeric: tabular-nums; }
+  table.cmp th, table.cmp td { padding: 10px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.cmp thead th { font-size: 12px; color: var(--muted); font-weight: 500; }
+  table.cmp td.best { background: var(--blue-tint); font-weight: 700; }
+  table.cmp small { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .scorebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 16px 20px; }
+  .scorebar .info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+  .scorebar .count b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .scorebar .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .hero h1 { font-size: 24px; }
+    .bigscore b { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><b>ES採点ビューア</b><span>株式会社アワーズ 採用チーム</span></div>
+    <nav class="tabs" aria-label="メイン">
+      <button type="button" data-view="list">一覧</button>
+      <button type="button" data-view="compare">比較</button>
+    </nav>
+    <div class="who" id="who"></div>
+  </div>
+</header>
+<main><div class="wrap" id="app"><p class="empty">読み込み中…</p></div></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var COLORS = [
+    { stroke: '#2457C5', dash: '', fill: 'rgba(36,87,197,.12)', label: '実線' },
+    { stroke: '#C26A12', dash: '6 3', fill: 'rgba(194,106,18,.08)', label: '破線' },
+    { stroke: '#2E3440', dash: '2 3', fill: 'none', label: '点線' }
+  ];
+  var ALL = '__all', ACTIVE = '__active';
+
+  var state = {
+    data: null,
+    view: 'list',
+    currentId: null,
+    compareIds: [],
+    filters: { q: '', segment: ACTIVE, rank: '', status: '', sort: 'total' }
+  };
+
+  // ─── 共通 ───
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function $(sel) { return document.querySelector(sel); }
+  function toast(msg) {
+    var t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+  function call(name, args, ok) {
+    google.script.run
+      .withSuccessHandler(ok)
+      .withFailureHandler(function (e) { toast((e && e.message) || 'エラーが発生しました'); })
+      [name].apply(null, args || []);
+  }
+  function byId(id) { return state.data.applicants.filter(function (a) { return a.id === id; })[0]; }
+  function lvClass(a) { return a.missing ? 'lvx' : 'lv' + a.level; }
+  function lvText(a) { return a.missing ? '記述不足' : a.level + ' / 5'; }
+
+  // ─── 起動 ───
+  function load() {
+    call('apiLoad', [], function (d) {
+      state.data = d;
+      $('#who').textContent = d.user.name + '（' + d.user.role + '）';
+      render();
+    });
+  }
+
+  function go(view, id) {
+    state.view = view;
+    if (id) state.currentId = id;
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelectorAll('nav.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () { go(b.dataset.view); });
+  });
+
+  function render() {
+    document.querySelectorAll('nav.tabs button').forEach(function (b) {
+      if (b.dataset.view === state.view || (state.view === 'detail' && b.dataset.view === 'list')) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    var app = $('#app');
+    if (state.view === 'detail') app.innerHTML = viewDetail();
+    else if (state.view === 'compare') app.innerHTML = viewCompare();
+    else app.innerHTML = viewList();
+    bind();
+  }
+
+  // ─── 一覧 ───
+  function activeSegments() {
+    return state.data.segments.filter(function (s) { return s.state === '受付中'; }).map(function (s) { return s.name; });
+  }
+  function filtered() {
+    var f = state.filters, act = activeSegments();
+    var list = state.data.applicants.filter(function (a) {
+      if (f.segment === ACTIVE && act.indexOf(a.segment) < 0) return false;
+      if (f.segment !== ACTIVE && f.segment !== ALL && a.segment !== f.segment) return false;
+      if (f.rank && (f.rank === '要確認' ? !a.needsCheck : a.rank !== f.rank)) return false;
+      if (f.status && a.status !== f.status) return false;
+      if (f.q && a.name.indexOf(f.q) < 0 && a.id.indexOf(f.q) < 0) return false;
+      return true;
+    });
+    list.sort(function (x, y) {
+      if (f.sort === 'date') return String(y.processedAt).localeCompare(String(x.processedAt));
+      if (f.sort === 'name') return x.name.localeCompare(y.name, 'ja');
+      return (y.total == null ? -1 : y.total) - (x.total == null ? -1 : x.total);
+    });
+    return list;
+  }
+
+  function option(value, label, current) {
+    return '<option value="' + esc(value) + '"' + (value === current ? ' selected' : '') + '>' + esc(label) + '</option>';
+  }
+
+  // ─── 採点の状況と「評価する」ボタン ───
+  function scoringPanel() {
+    var s = state.data.scoring, d = state.data;
+    if (!s) return '';
+    var sch = s.schedule || {};
+    var line;
+    if (s.open && s.open.state === '処理中') {
+      line = '<span class="pill s-未確認">採点中</span><span>Claudeが採点しています（' + esc(s.open.requestedAt) + ' 開始の依頼）</span>';
+    } else if (s.open) {
+      line = '<span class="pill s-確認済み">依頼済み</span><span>' + esc(s.open.by) + 'さんが ' + esc(s.open.requestedAt) +
+        ' に依頼しました。次の確認（' + esc(sch.checkHours || '') + '、' + (sch.checkEveryMinutes || 60) + '分ごと）で採点が始まります</span>';
+    } else if (s.last) {
+      line = '<span class="meta">前回の採点：' + esc(s.last.finishedAt) + (s.last.state === 'エラー' ? '（エラー）' : '') + ' ' + esc(s.last.result) + '</span>';
+    } else {
+      line = '<span class="meta">まだ採点は実行されていません</span>';
+    }
+    var btn = '';
+    if (d.canEdit) {
+      btn = s.open ? '<button type="button" class="btn primary" disabled>' + (s.open.state === '処理中' ? '採点中' : '依頼済み') + '</button>'
+        : '<button type="button" class="btn primary" id="req-scoring"' + (s.unscored === 0 ? ' disabled title="未採点のESはありません"' : '') + '>評価する</button>';
+    }
+    return '<section class="card scorebar" aria-label="採点の状況">' +
+      '<div class="info"><div class="count"><span class="meta">未採点のES </span><b>' + (s.unscored == null ? '–' : s.unscored) + '</b> 件</div>' + line + '</div>' +
+      '<div class="actions"><button type="button" class="btn quiet" id="reload">最新の状態に更新</button>' + btn + '</div>' +
+      '<p class="note" style="flex-basis:100%">自動採点：毎日 ' + esc(sch.dailyTime || '') + '。' +
+        (d.canEdit ? '「評価する」を押すと、1時間以内に採点が始まります（1回で最大10件。残りは続けて自動で採点します）。' : '') + '</p>' +
+      '</section>';
+  }
+
+  function viewList() {
+    var d = state.data, f = state.filters, list = filtered();
+    var axesHead = list.length ? list[0].axes : (d.applicants[0] ? d.applicants[0].axes : []);
+    var mixed = list.some(function (a) { return a.criteria !== (list[0] && list[0].criteria); });
+
+    var segOpts = option(ACTIVE, '受付中の区分すべて', f.segment) + option(ALL, 'すべての区分', f.segment) +
+      d.segments.map(function (s) { return option(s.name, s.name + (s.state ? '（' + s.state + '）' : ''), f.segment); }).join('');
+
+    var rows = list.map(function (a, i) {
+      var picked = state.compareIds.indexOf(a.id) >= 0;
+      var cells = a.axes.map(function (ax) {
+        return '<td><div class="mini" title="' + esc(ax.name + '：' + lvText(ax)) + '"><span class="v num">' + (ax.missing ? '–' : ax.level) +
+          '</span><div class="track" aria-hidden="true"><div class="bar ' + lvClass(ax) + '" style="width:' + ((ax.missing ? 3 : ax.level) * 20) + '%"></div></div></div></td>';
+      }).join('');
+      return '<tr>' +
+        '<td class="first"><input type="checkbox" class="chk" data-pick="' + esc(a.id) + '"' + (picked ? ' checked' : '') +
+          ' aria-label="' + esc(a.name) + 'を比較に追加"></td>' +
+        '<td class="num meta">' + (i + 1) + '</td>' +
+        '<td><button type="button" class="namebtn" data-open="' + esc(a.id) + '">' + esc(a.name || '（氏名不明）') + '</button>' +
+          '<div class="meta">' + esc(a.segment) + ' ・ ' + esc(a.id) + '</div></td>' +
+        '<td>' + (a.needsCheck ? '<span class="pill check">要確認</span>' :
+          '<span class="total num">' + a.total + '</span> <span class="rank ' + a.rank + '">' + a.rank + '</span>') + '</td>' +
+        (a.needsCheck ? '<td colspan="' + axesHead.length + '" class="meta">' + esc(a.issue || '採点できませんでした') + '</td>' : cells) +
+        '<td><span class="pill s-' + esc(a.status) + '">' + esc(a.status) + '</span></td>' +
+        '<td class="meta num">' + esc(String(a.processedAt).slice(5, 10)) + '</td></tr>';
+    }).join('');
+
+    var ranks = { A: 0 }, unchecked = 0, needs = 0;
+    list.forEach(function (a) { if (a.rank === 'A') ranks.A++; if (a.status === '未確認') unchecked++; if (a.needsCheck) needs++; });
+
+    return '' +
+      '<div class="row between"><div><h1>応募者一覧</h1><p class="sub">書類選考 ・ AIの点数は判断の補助です。合否は担当者が判断します。</p></div>' +
+      '<div class="kpis">' +
+        '<div class="kpi"><small>表示中</small><b>' + list.length + '</b> 件</div>' +
+        '<div class="kpi"><small>Aランク</small><b>' + ranks.A + '</b> 件</div>' +
+        '<div class="kpi"><small>未確認</small><b class="warn">' + unchecked + '</b> 件</div>' +
+        (needs ? '<div class="kpi"><small>要確認</small><b class="warn">' + needs + '</b> 件</div>' : '') +
+      '</div></div>' +
+      scoringPanel() +
+      '<form class="card filters" aria-label="絞り込み" onsubmit="return false">' +
+        '<div class="field wide"><label for="f-q">氏名・応募IDで検索</label><input id="f-q" type="search" value="' + esc(f.q) + '" placeholder="例：山田"></div>' +
+        '<div class="field wide"><label for="f-seg">選考区分</label><select id="f-seg">' + segOpts + '</select></div>' +
+        '<div class="field"><label for="f-rank">ランク</label><select id="f-rank">' +
+          option('', 'すべて', f.rank) + option('A', 'A', f.rank) + option('B', 'B', f.rank) + option('C', 'C', f.rank) + option('要確認', '要確認', f.rank) +
+        '</select></div>' +
+        '<div class="field"><label for="f-status">ステータス</label><select id="f-status">' + option('', 'すべて', f.status) +
+          d.statusOptions.map(function (s) { return option(s, s, f.status); }).join('') + '</select></div>' +
+        '<div class="field"><label for="f-sort">並び順</label><select id="f-sort">' +
+          option('total', '総合点が高い順', f.sort) + option('date', '処理日が新しい順', f.sort) + option('name', '氏名順', f.sort) +
+        '</select></div>' +
+      '</form>' +
+      (mixed ? '<p class="alert">表示中の応募者に、異なる評価基準で採点されたものが混ざっています。点数を比べるときは選考区分で絞り込んでください。</p>' : '') +
+      (state.compareIds.length ? '<div class="chips"><span class="meta">比較に追加：' + state.compareIds.length + ' / 3 人</span>' +
+        '<button type="button" class="btn primary" data-view-go="compare">比較画面へ</button></div>' : '') +
+      '<div class="tablebox">' + (list.length ?
+        '<table class="list"><thead><tr><th class="first" style="width:40px"><span class="sr">比較</span></th><th style="width:40px">順位</th><th>氏名 ・ 区分</th><th style="width:120px">総合点</th>' +
+        axesHead.map(function (ax) { return '<th style="width:84px">' + esc(ax.short) + '<small>' + esc(ax.kokoro) + '・' + ax.weight + '</small></th>'; }).join('') +
+        '<th style="width:96px">ステータス</th><th style="width:64px">処理日</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        : '<p class="empty">条件に合う応募者はいません。</p>') + '</div>' +
+      '<p class="note">各評価軸は5段階。総合点は配点 × 段階 ÷ 5 の合計（100点満点）です。「–」は記述不足の軸で、段階3として計算しています。チェックを入れた応募者（最大3人）を比較画面で並べられます。</p>';
+  }
+
+  // ─── レーダーチャート ───
+  function radar(axes, series, ariaLabel) {
+    var n = axes.length, cx = 150, cy = 145, R = 100;
+    if (n < 3) return '';
+    function pt(i, r) {
+      var a = -Math.PI / 2 + i * 2 * Math.PI / n;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    }
+    function poly(r) { return axes.map(function (_, i) { return pt(i, r).map(function (v) { return v.toFixed(1); }).join(','); }).join(' '); }
+    var grid = '';
+    for (var k = 5; k >= 1; k--) grid += '<polygon points="' + poly(R * k / 5) + '"></polygon>';
+    axes.forEach(function (_, i) { var p = pt(i, R); grid += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"></line>'; });
+
+    var shapes = series.slice().reverse().map(function (s) {
+      var pts = s.levels.map(function (lv, i) { return pt(i, R * lv / 5).map(function (v) { return v.toFixed(1); }).join(','); }).join(' ');
+      var dots = series.length === 1 ? s.levels.map(function (lv, i) { var p = pt(i, R * lv / 5); return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4" fill="' + s.color.stroke + '"></circle>'; }).join('') : '';
+      return '<polygon points="' + pts + '" fill="' + s.color.fill + '" stroke="' + s.color.stroke + '" stroke-width="2.2"' + (s.color.dash ? ' stroke-dasharray="' + s.color.dash + '"' : '') + '></polygon>' + dots;
+    }).join('');
+
+    var labels = axes.map(function (ax, i) {
+      var p = pt(i, R + 16), anchor = Math.abs(p[0] - cx) < 4 ? 'middle' : (p[0] > cx ? 'start' : 'end');
+      var y = p[1] + (p[1] < cy - 20 ? -2 : p[1] > cy + 20 ? 12 : 4);
+      return '<text x="' + p[0].toFixed(1) + '" y="' + y.toFixed(1) + '" text-anchor="' + anchor + '">' + esc(ax.label) + '</text>';
+    }).join('');
+
+    return '<svg viewBox="-78 0 456 290" role="img" aria-label="' + esc(ariaLabel) + '" style="width:100%;height:auto;display:block">' +
+      '<g fill="none" stroke="#E1E4E8" stroke-width="1">' + grid + '</g>' + shapes +
+      '<g font-size="16" fill="#3A414B">' + labels + '</g></svg>';
+  }
+
+  // ─── 詳細 ───
+  function viewDetail() {
+    var a = byId(state.currentId), d = state.data;
+    if (!a) return '<button type="button" class="back" data-view-go="list">← 一覧へ戻る</button><p class="empty">応募者が見つかりません。</p>';
+    var dis = d.canEdit ? '' : ' disabled';
+    var missing = a.axes.filter(function (x) { return x.missing; });
+    var radarAxes = a.axes.map(function (x) { return { label: x.short + ' ' + (x.missing ? '–' : x.level) }; });
+    var radarSvg = a.needsCheck ? '' : radar(radarAxes, [{ levels: a.axes.map(function (x) { return x.missing ? 3 : x.level; }), color: COLORS[0] }],
+      '評価軸のレーダーチャート。' + a.axes.map(function (x) { return x.short + lvText(x); }).join('、'));
+    var kokoroLegend = {};
+    a.axes.forEach(function (x) { (kokoroLegend[x.kokoro] = kokoroLegend[x.kokoro] || []).push(x.short); });
+
+    var axisCards = a.axes.map(function (x) {
+      var seg = '';
+      for (var i = 1; i <= 5; i++) seg += '<i' + (!x.missing && i <= x.level ? ' class="' + lvClass(x) + '"' : '') + '></i>';
+      return '<article class="axis"><div class="head"><h3>' + esc(x.name) + ' <small>' + esc(x.kokoro) + ' ・ 配点' + x.weight + '</small></h3>' +
+        '<div class="row" style="gap:10px;align-items:center"><span class="seg" aria-hidden="true">' + seg + '</span>' +
+        '<b class="num">' + esc(lvText(x)) + '</b><span class="meta num">' + x.score + '点</span></div></div>' +
+        (x.reason ? '<p>' + esc(x.reason) + '</p>' : '') +
+        (x.quote ? '<blockquote><span class="src">ES原文' + (x.source ? '（' + esc(x.source) + '）' : '') + '</span><mark>' + esc(x.quote) + '</mark></blockquote>' : '') +
+        '</article>';
+    }).join('');
+
+    return '' +
+      '<button type="button" class="back" data-view-go="list">← 一覧へ戻る</button>' +
+      '<section class="card hero" aria-label="応募者の概要">' +
+        '<div><h1>' + esc(a.name || '（氏名不明）') + '</h1><div class="meta">' + esc(a.segment) + ' ・ ' + esc(a.id) + ' ・ 処理日時 ' + esc(a.processedAt) + ' ・ 評価基準 ' + esc(a.criteria) + '</div></div>' +
+        '<div class="row" style="align-items:center;gap:24px">' +
+          (a.needsCheck ? '<span class="pill check">要確認</span>' :
+            '<div class="row" style="align-items:center;gap:12px"><div><div class="meta">総合点</div><div class="bigscore"><b>' + a.total + '</b><span>/ 100</span></div></div>' +
+            '<span class="rank ' + a.rank + '" style="font-size:14px;padding:4px 12px">ランク' + a.rank + '</span></div>') +
+          '<div class="field" style="flex:0 0 auto"><label for="d-status">ステータス</label><select id="d-status" class="plain"' + dis + '>' +
+            d.statusOptions.map(function (s) { return option(s, s, a.status); }).join('') + '</select></div>' +
+          (a.hasPdf ? '<button type="button" class="btn outline" id="d-pdf" style="align-self:flex-end">ESのPDFを開く</button>' : '') +
+        '</div>' +
+      '</section>' +
+      (a.needsCheck ? '<p class="alert"><b>要確認：</b>' + esc(a.issue || 'AIが採点できませんでした。PDFを開いて内容を確認してください。') + '</p>' : '') +
+      '<div class="cols">' +
+        '<div class="side">' +
+          (radarSvg ? '<section class="card" aria-labelledby="h-r"><h2 id="h-r" style="margin-bottom:8px">評価軸のバランス</h2>' + radarSvg +
+            '<div class="legend">' + Object.keys(kokoroLegend).map(function (k) { return '<span>' + esc(k) + '：' + esc(kokoroLegend[k].join('・')) + '</span>'; }).join('') + '</div></section>' : '') +
+          (a.summary || a.strengths.length || a.checks.length ? '<section class="card" style="display:flex;flex-direction:column;gap:14px" aria-labelledby="h-s"><h2 id="h-s">総評</h2>' +
+            (a.summary ? '<p style="margin:0">' + esc(a.summary) + '</p>' : '') +
+            '<div class="row">' +
+              (a.strengths.length ? '<div style="flex:1 1 140px"><h3 style="font-size:13px;color:var(--ok-ink);margin-bottom:6px">強み</h3><ul class="tight">' + a.strengths.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></div>' : '') +
+              (a.checks.length ? '<div style="flex:1 1 140px"><h3 style="font-size:13px;color:var(--warn-ink);margin-bottom:6px">次の選考で確認したい点</h3><ul class="tight">' + a.checks.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></div>' : '') +
+            '</div>' +
+            (missing.length ? '<p class="note">記述不足の軸：' + esc(missing.map(function (x) { return x.name; }).join('、')) + '（段階3として計算）</p>' : '') +
+          '</section>' : '') +
+          '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2><label for="d-memo">担当者メモ</label></h2>' +
+            '<textarea id="d-memo" rows="4" maxlength="2000" placeholder="次の選考で見たいことなどを記入"' + dis + '>' + esc(a.memo) + '</textarea>' +
+            (d.canEdit ? '<button type="button" class="btn primary" id="d-save" style="align-self:flex-end">メモを保存</button>' : '<p class="note">閲覧者はメモを編集できません。</p>') +
+          '</section>' +
+        '</div>' +
+        '<section class="mainc" aria-labelledby="h-a">' +
+          '<div class="row between" style="align-items:baseline;gap:8px"><h2 id="h-a">評価軸ごとの根拠</h2><span class="meta"><mark>黄色</mark>はAIが根拠として引用したESの記述</span></div>' +
+          (axisCards || '<p class="empty card">評価の詳細はありません。</p>') +
+          '<p class="note card" style="border-style:dashed;padding:10px 14px">本籍・出生地、家族構成、思想・信条、学校名・前職の会社名などは評価の対象外です。</p>' +
+        '</section>' +
+      '</div>';
+  }
+
+  // ─── 比較 ───
+  function viewCompare() {
+    var picks = state.compareIds.map(byId).filter(Boolean);
+    if (!picks.length) {
+      return '<div><h1>応募者の比較</h1><p class="sub">一覧画面で、比較したい応募者にチェックを入れてください（最大3人）。</p></div>' +
+        '<div class="card empty">比較する応募者が選ばれていません。<div style="margin-top:12px"><button type="button" class="btn quiet" data-view-go="list">一覧へ</button></div></div>';
+    }
+    var base = picks[0], sameCrit = picks.every(function (p) { return p.criteria === base.criteria; });
+    var scored = picks.filter(function (p) { return !p.needsCheck; });
+
+    var chips = picks.map(function (p, i) {
+      var c = COLORS[i];
+      return '<span class="chip" style="border-color:' + c.stroke + '">' +
+        '<svg aria-hidden="true" width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="' + c.stroke + '" stroke-width="3"' + (c.dash ? ' stroke-dasharray="' + c.dash + '"' : '') + '></line></svg>' +
+        '<b>' + esc(p.name) + '</b><span class="meta">' + (p.needsCheck ? '要確認' : p.total + '点 ・ ' + p.rank) + '</span>' +
+        '<button type="button" data-unpick="' + esc(p.id) + '" aria-label="' + esc(p.name) + 'を比較から外す">×</button></span>';
+    }).join('');
+
+    var chart = sameCrit && scored.length ? radar(
+      base.axes.map(function (x) { return { label: x.short }; }),
+      picks.map(function (p, i) { return p.needsCheck ? null : { levels: p.axes.map(function (x) { return x.missing ? 3 : x.level; }), color: COLORS[i] }; }).filter(Boolean),
+      picks.length + '人のレーダーチャート') : '';
+
+    var rows = '';
+    if (sameCrit) {
+      rows = base.axes.map(function (ax, k) {
+        var vals = picks.map(function (p) { return p.needsCheck ? null : p.axes[k]; });
+        var nums = vals.map(function (v) { return v ? v.score : -1; });
+        var max = Math.max.apply(null, nums), allSame = nums.every(function (n) { return n === nums[0]; });
+        return '<tr><th scope="row" style="font-weight:400">' + esc(ax.name) + '（' + ax.weight + '）<div><small>' + esc(ax.kokoro) + '</small></div></th>' +
+          vals.map(function (v) {
+            if (!v) return '<td>–</td>';
+            return '<td' + (!allSame && v.score === max ? ' class="best"' : '') + '>' + (v.missing ? '記述不足' : v.level) + ' <small>' + v.score + '点</small></td>';
+          }).join('') + '</tr>';
+      }).join('') +
+      '<tr><th scope="row">総合点</th>' + picks.map(function (p) { return '<td style="font-size:20px;font-weight:700">' + (p.needsCheck ? '要確認' : p.total) + '</td>'; }).join('') + '</tr>' +
+      '<tr><th scope="row" style="font-weight:400"><small>主な強み</small></th>' + picks.map(function (p) { return '<td style="font-size:13px">' + esc(p.strengths[0] || '') + '</td>'; }).join('') + '</tr>';
+    }
+
+    return '' +
+      '<div><h1>応募者の比較</h1><p class="sub">評価軸ごとの強みを並べて確認できます。</p></div>' +
+      '<section class="card chips" aria-label="比較する応募者">' + chips +
+        (picks.length < 3 ? '<button type="button" class="btn quiet" data-view-go="list">＋ 一覧から追加</button>' : '') + '</section>' +
+      (sameCrit ? '' : '<p class="alert">選んだ応募者の評価基準が異なるため、評価軸ごとの比較はできません。同じ評価基準の応募者を選んでください。</p>') +
+      (sameCrit ? '<div class="cols">' +
+        (chart ? '<section class="card side" aria-labelledby="h-c"><h2 id="h-c" style="margin-bottom:8px">評価軸のバランス</h2>' + chart +
+          '<div class="legend">' + picks.map(function (p, i) { return '<span>' + esc(p.name) + '：' + COLORS[i].label + '</span>'; }).join('') + '</div></section>' : '') +
+        '<section class="card mainc" aria-labelledby="h-t"><h2 id="h-t">評価軸ごとの点数</h2><div style="overflow-x:auto"><table class="cmp"><thead><tr><th>評価軸（配点）</th>' +
+          picks.map(function (p, i) { return '<th style="border-bottom:3px ' + (i === 0 ? 'solid' : i === 1 ? 'dashed' : 'dotted') + ' ' + COLORS[i].stroke + '">' + esc(p.name) + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+          '<p class="note">各行で最も高い点数を太字と色で示しています（全員が同点の行は除く）。</p>' +
+          '<div class="row" style="gap:8px">' + picks.map(function (p) { return '<button type="button" class="btn quiet" data-open="' + esc(p.id) + '">' + esc(p.name) + 'の詳細</button>'; }).join('') + '</div>' +
+        '</section></div>' : '');
+  }
+
+  // ─── イベント ───
+  function bind() {
+    var app = $('#app');
+    app.querySelectorAll('[data-open]').forEach(function (el) { el.addEventListener('click', function () { go('detail', el.dataset.open); }); });
+    app.querySelectorAll('[data-view-go]').forEach(function (el) { el.addEventListener('click', function () { go(el.dataset.viewGo); }); });
+    app.querySelectorAll('[data-unpick]').forEach(function (el) {
+      el.addEventListener('click', function () { state.compareIds = state.compareIds.filter(function (x) { return x !== el.dataset.unpick; }); render(); });
+    });
+    app.querySelectorAll('[data-pick]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        var id = el.dataset.pick;
+        if (el.checked) {
+          if (state.compareIds.length >= 3) { el.checked = false; toast('比較できるのは3人までです'); return; }
+          state.compareIds.push(id);
+        } else {
+          state.compareIds = state.compareIds.filter(function (x) { return x !== id; });
+        }
+        render();
+      });
+    });
+
+    var map = { 'f-seg': 'segment', 'f-rank': 'rank', 'f-status': 'status', 'f-sort': 'sort' };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', function () { state.filters[map[id]] = el.value; render(); });
+    });
+    var q = document.getElementById('f-q');
+    if (q) q.addEventListener('input', function () {
+      state.filters.q = q.value.trim();
+      clearTimeout(bind._q);
+      bind._q = setTimeout(function () {
+        var pos = q.selectionStart; render();
+        var nq = document.getElementById('f-q'); nq.focus(); nq.setSelectionRange(pos, pos);
+      }, 250);
+    });
+
+    var req = document.getElementById('req-scoring');
+    if (req) req.addEventListener('click', function () {
+      req.disabled = true;
+      call('apiRequestScoring', [], function (s) {
+        state.data.scoring = s;
+        render();
+        toast('採点を依頼しました。1時間以内に始まります');
+      });
+    });
+    var reload = document.getElementById('reload');
+    if (reload) reload.addEventListener('click', function () { reload.disabled = true; load(); toast('最新の状態に更新しています'); });
+
+    var st = document.getElementById('d-status');
+    if (st && !st.disabled) st.addEventListener('change', function () {
+      var a = byId(state.currentId), v = st.value;
+      call('apiUpdate', [a.id, { status: v }], function (r) { a.status = r.status; toast('ステータスを「' + r.status + '」に変更しました'); });
+    });
+    var save = document.getElementById('d-save');
+    if (save) save.addEventListener('click', function () {
+      var a = byId(state.currentId), memo = document.getElementById('d-memo').value;
+      save.disabled = true;
+      call('apiUpdate', [a.id, { memo: memo }], function (r) { a.memo = r.memo; save.disabled = false; toast('メモを保存しました'); });
+      setTimeout(function () { save.disabled = false; }, 4000);
+    });
+    var pdf = document.getElementById('d-pdf');
+    if (pdf) pdf.addEventListener('click', function () {
+      var w = window.open('', '_blank');
+      if (w) w.document.write('<p style="font-family:sans-serif;padding:24px">PDFを読み込んでいます…</p>');
+      call('apiGetPdf', [state.currentId], function (r) {
+        var bin = atob(r.base64), bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        var url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        if (w) w.location.href = url; else window.open(url, '_blank');
+      });
+    });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

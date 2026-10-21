@@ -1,0 +1,38 @@
+# このリポジトリについて
+
+株式会社アワーズ採用チームの「ES採点システム」です。ES（PDF）をClaudeが採点し、Googleスプレッドシートに保存、GASのWebアプリで閲覧します。
+
+- 仕様：`docs/仕様.md`（**コードを変更する前に必ず読む**）
+- 導入手順：`docs/導入手順.md`、自動デプロイ：`docs/自動デプロイ設定.md`、定時採点：`docs/定時採点タスク.md`
+
+## 構成
+
+| パス | 内容 |
+| --- | --- |
+| `src/Code.gs` | GASのサーバー側。シートの初期設定、Webアプリ、API（apiLoad / apiUpdate / apiRequestScoring / apiGetPdf） |
+| `src/Index.html` | 閲覧アプリの画面（一覧・詳細・比較）。外部ライブラリなし |
+| `src/appsscript.json` | GASのマニフェスト（Webアプリ：実行ユーザー＝デプロイした人、アクセス＝組織内） |
+| `skill/SKILL.md` | ES採点スキル。claude.ai に保存して使う（このファイルが原本） |
+| `tests/` | `logic.test.js`（計算ロジック）、`make-preview.js` + `shoot.js`（サンプルデータで画面を描画） |
+| `.github/workflows/deploy.yml` | main への push でテスト → clasp push → Webアプリ更新 |
+
+## 作業のルール
+
+- やり取り・コメント・ドキュメントはすべて日本語。画面の文言は短くはっきり書く
+- 仕様に関わる変更をしたら、同じコミットで `docs/仕様.md`（本文と変更履歴）も更新する
+- シートの列を変えるときは、`HEADERS`・`skill/SKILL.md` の書き込み形式・`docs/仕様.md` の3か所をそろえる。既存の運用中シートは自動で列が増えないため、移行手順も `docs/` に書く
+- 評価基準を変えるときは既存の基準を書き換えず、新しい基準名（例：新卒総合職_v2）で追加する
+- `skill/SKILL.md` を変更したら、claude.ai でスキルを保存し直す必要があることを利用者に伝える
+- 画面に出す値は必ず `esc()` を通す（ESの内容やメモに任意の文字列が入るため）
+- 認証情報・スクリプトID・デプロイIDをコードやドキュメントに書かない（GitHub の Secrets を使う）
+- 実在の応募者のデータをリポジトリ・テスト・スクリーンショットに含めない。テストはサンプルデータだけを使う
+- GASのエディタで直接編集しない（次の自動デプロイで上書きされる）
+
+## 確認方法
+
+```
+node tests/logic.test.js src/Code.gs
+node tests/make-preview.js src/Index.html /tmp/preview.html && node tests/shoot.js /tmp/preview.html /tmp/shots
+```
+
+画面を変えたら、デスクトップ（1280px）とスマホ（390px）のスクリーンショットで、横スクロールが出ないことを確認する。
