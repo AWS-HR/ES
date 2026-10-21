@@ -5,10 +5,10 @@ const html = fs.readFileSync(src, 'utf8');
 
 const AX = [
   ['people', '人が好き・出会いを大切にする', '人が好き', '思いやり', 25],
-  ['purpose', '意味・目的を考える力', '目的思考', '素直', 20],
-  ['axis', '自分の軸', '自分の軸', '前向き', 20],
   ['self_esteem', '自己肯定感', '自己肯定感', '思いやり', 15],
+  ['purpose', '意味・目的を考える力', '目的思考', '素直', 20],
   ['feedback', '他者の意見を受け入れる力', '意見受容', '素直', 10],
+  ['axis', '自分の軸', '自分の軸', '前向き', 20],
   ['pdca', 'PDCA・改善する力', 'PDCA', '前向き', 10]
 ];
 function person(id, name, seg, lv, status, extra) {

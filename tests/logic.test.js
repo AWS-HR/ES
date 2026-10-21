@@ -16,7 +16,12 @@ const c = criteria['新卒総合職_v1'];
 assert.strictEqual(c.axes.length, 6, '軸は6つ');
 assert.strictEqual(c.axes.reduce((s, a) => s + a.weight, 0), 100, '配点の合計は100');
 assert.strictEqual(c.rankA, 80); assert.strictEqual(c.rankB, 65);
-assert.deepStrictEqual(Array.from(c.axes, a => a.id), ['people', 'purpose', 'axis', 'self_esteem', 'feedback', 'pdca']);
+// 並びは「思いやり → 素直 → 前向き」
+assert.deepStrictEqual(Array.from(c.axes, a => a.id), ['people', 'self_esteem', 'purpose', 'feedback', 'axis', 'pdca']);
+assert.deepStrictEqual(Array.from(c.axes, a => a.kokoro), ['思いやり', '思いやり', '素直', '素直', '前向き', '前向き']);
+// シートの表示順がバラバラでも、こころの順にまとまる
+const shuffled = ctx.buildCriteria_(critRows.map(r => Object.assign({}, r, { '表示順': r['軸ID'] === 'pdca' ? 1 : r['軸ID'] === 'people' ? 9 : r['表示順'] })));
+assert.deepStrictEqual(Array.from(shuffled['新卒総合職_v1'].axes, a => a.kokoro), ['思いやり', '思いやり', '素直', '素直', '前向き', '前向き']);
 
 // 設問の軸IDがすべて評価基準に存在する
 const ids = new Set(c.axes.map(a => a.id));
@@ -43,7 +48,7 @@ assert.deepStrictEqual(Array.from(a.strengths), ['人が好き・出会いを大
 
 // 記述不足は段階3として計算：5,4,5,4,記述不足,4 → 87（3→6点で同じ）
 a = ctx.buildApplicant_(row, det([5, 4, 5, 4, '記述不足', 4]), criteria);
-assert.strictEqual(a.total, 87); assert.strictEqual(a.axes[4].missing, true);
+assert.strictEqual(a.total, 87); assert.strictEqual(a.axes.find(x => x.id === 'feedback').missing, true);
 
 // ランク境界：ちょうど80はA、79はB、65はB、64はC
 const at = (lv) => ctx.buildApplicant_(row, det(lv), criteria);

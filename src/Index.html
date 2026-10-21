@@ -49,7 +49,7 @@
   .field input, .field select, select.plain { height: 44px; border: 1px solid var(--field); border-radius: 8px; padding: 0 10px; background: var(--card); }
   .tablebox { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  table.list { min-width: 1080px; }
+  table.list { min-width: 1120px; }
   table.list th { background: #F9FAFB; text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 10px 8px; vertical-align: bottom; }
   table.list th small { display: block; font-weight: 400; font-size: 11px; }
   table.list td { padding: 12px 8px; border-top: 1px solid var(--line-soft); vertical-align: middle; }
@@ -73,6 +73,8 @@
   .mini .v { width: 12px; font-weight: 500; font-size: 13px; }
   .mini .track { flex: 1; height: 6px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
   .mini .bar { height: 100%; border-radius: 3px; }
+  .pts { font-size: 12px; color: var(--ink-2); margin-top: 2px; padding-left: 18px; }
+  .pts span { color: var(--muted); }
   .lv5 { background: var(--blue-dark); } .lv4 { background: var(--blue); } .lv3 { background: var(--blue-light); } .lv2, .lv1 { background: var(--field); }
   .lvx { background: repeating-linear-gradient(45deg, var(--field) 0 3px, transparent 3px 6px); }
   .chk { width: 20px; height: 20px; accent-color: var(--blue); cursor: pointer; }
@@ -132,7 +134,7 @@
 <body>
 <header class="top">
   <div class="wrap">
-    <div class="brand"><b>ES採点ビューア</b><span>株式会社アワーズ 採用チーム</span></div>
+    <div class="brand"><b>ESチェッカー</b><span>株式会社アワーズ 採用チーム</span></div>
     <nav class="tabs" aria-label="メイン">
       <button type="button" data-view="list">一覧</button>
       <button type="button" data-view="compare">比較</button>
@@ -150,8 +152,11 @@
   var COLORS = [
     { stroke: '#2457C5', dash: '', fill: 'rgba(36,87,197,.12)', label: '実線' },
     { stroke: '#C26A12', dash: '6 3', fill: 'rgba(194,106,18,.08)', label: '破線' },
-    { stroke: '#2E3440', dash: '2 3', fill: 'none', label: '点線' }
+    { stroke: '#2E3440', dash: '2 3', fill: 'none', label: '点線' },
+    { stroke: '#138A72', dash: '10 4', fill: 'none', label: '長い破線' },
+    { stroke: '#9B3FA8', dash: '8 3 2 3', fill: 'none', label: '一点鎖線' }
   ];
+  var MAX_COMPARE = 5;
   var ALL = '__all', ACTIVE = '__active';
 
   var state = {
@@ -271,8 +276,9 @@
     var rows = list.map(function (a, i) {
       var picked = state.compareIds.indexOf(a.id) >= 0;
       var cells = a.axes.map(function (ax) {
-        return '<td><div class="mini" title="' + esc(ax.name + '：' + lvText(ax)) + '"><span class="v num">' + (ax.missing ? '–' : ax.level) +
-          '</span><div class="track" aria-hidden="true"><div class="bar ' + lvClass(ax) + '" style="width:' + ((ax.missing ? 3 : ax.level) * 20) + '%"></div></div></div></td>';
+        return '<td><div class="mini" title="' + esc(ax.name + '：' + lvText(ax) + '・' + ax.score + '点') + '"><span class="v num">' + (ax.missing ? '–' : ax.level) +
+          '</span><div class="track" aria-hidden="true"><div class="bar ' + lvClass(ax) + '" style="width:' + ((ax.missing ? 3 : ax.level) * 20) + '%"></div></div></div>' +
+          '<div class="pts num">' + ax.score + '<span>/' + ax.weight + '点</span></div></td>';
       }).join('');
       return '<tr>' +
         '<td class="first"><input type="checkbox" class="chk" data-pick="' + esc(a.id) + '"' + (picked ? ' checked' : '') +
@@ -312,14 +318,14 @@
         '</select></div>' +
       '</form>' +
       (mixed ? '<p class="alert">表示中の応募者に、異なる評価基準で採点されたものが混ざっています。点数を比べるときは選考区分で絞り込んでください。</p>' : '') +
-      (state.compareIds.length ? '<div class="chips"><span class="meta">比較に追加：' + state.compareIds.length + ' / 3 人</span>' +
+      (state.compareIds.length ? '<div class="chips"><span class="meta">比較に追加：' + state.compareIds.length + ' / ' + MAX_COMPARE + ' 人</span>' +
         '<button type="button" class="btn primary" data-view-go="compare">比較画面へ</button></div>' : '') +
       '<div class="tablebox">' + (list.length ?
         '<table class="list"><thead><tr><th class="first" style="width:40px"><span class="sr">比較</span></th><th style="width:40px">順位</th><th>氏名 ・ 区分</th><th style="width:120px">総合点</th>' +
         axesHead.map(function (ax) { return '<th style="width:84px">' + esc(ax.short) + '<small>' + esc(ax.kokoro) + '・' + ax.weight + '</small></th>'; }).join('') +
         '<th style="width:96px">ステータス</th><th style="width:64px">処理日</th></tr></thead><tbody>' + rows + '</tbody></table>'
         : '<p class="empty">条件に合う応募者はいません。</p>') + '</div>' +
-      '<p class="note">各評価軸は5段階。総合点は配点 × 段階 ÷ 5 の合計（100点満点）です。「–」は記述不足の軸で、段階3として計算しています。チェックを入れた応募者（最大3人）を比較画面で並べられます。</p>';
+      '<p class="note">各評価軸は5段階。総合点は配点 × 段階 ÷ 5 の合計（100点満点）です。「–」は記述不足の軸で、段階3として計算しています。チェックを入れた応募者（最大5人）を比較画面で並べられます。</p>';
   }
 
   // ─── レーダーチャート ───
@@ -415,10 +421,15 @@
   }
 
   // ─── 比較 ───
+  function lineSample(c) {
+    return '<svg aria-hidden="true" width="28" height="8" style="display:block;margin-bottom:4px"><line x1="0" y1="4" x2="28" y2="4" stroke="' + c.stroke +
+      '" stroke-width="3"' + (c.dash ? ' stroke-dasharray="' + c.dash + '"' : '') + '></line></svg>';
+  }
+
   function viewCompare() {
     var picks = state.compareIds.map(byId).filter(Boolean);
     if (!picks.length) {
-      return '<div><h1>応募者の比較</h1><p class="sub">一覧画面で、比較したい応募者にチェックを入れてください（最大3人）。</p></div>' +
+      return '<div><h1>応募者の比較</h1><p class="sub">一覧画面で、比較したい応募者にチェックを入れてください（最大5人）。</p></div>' +
         '<div class="card empty">比較する応募者が選ばれていません。<div style="margin-top:12px"><button type="button" class="btn quiet" data-view-go="list">一覧へ</button></div></div>';
     }
     var base = picks[0], sameCrit = picks.every(function (p) { return p.criteria === base.criteria; });
@@ -456,13 +467,13 @@
     return '' +
       '<div><h1>応募者の比較</h1><p class="sub">評価軸ごとの強みを並べて確認できます。</p></div>' +
       '<section class="card chips" aria-label="比較する応募者">' + chips +
-        (picks.length < 3 ? '<button type="button" class="btn quiet" data-view-go="list">＋ 一覧から追加</button>' : '') + '</section>' +
+        (picks.length < MAX_COMPARE ? '<button type="button" class="btn quiet" data-view-go="list">＋ 一覧から追加</button>' : '') + '</section>' +
       (sameCrit ? '' : '<p class="alert">選んだ応募者の評価基準が異なるため、評価軸ごとの比較はできません。同じ評価基準の応募者を選んでください。</p>') +
       (sameCrit ? '<div class="cols">' +
         (chart ? '<section class="card side" aria-labelledby="h-c"><h2 id="h-c" style="margin-bottom:8px">評価軸のバランス</h2>' + chart +
           '<div class="legend">' + picks.map(function (p, i) { return '<span>' + esc(p.name) + '：' + COLORS[i].label + '</span>'; }).join('') + '</div></section>' : '') +
         '<section class="card mainc" aria-labelledby="h-t"><h2 id="h-t">評価軸ごとの点数</h2><div style="overflow-x:auto"><table class="cmp"><thead><tr><th>評価軸（配点）</th>' +
-          picks.map(function (p, i) { return '<th style="border-bottom:3px ' + (i === 0 ? 'solid' : i === 1 ? 'dashed' : 'dotted') + ' ' + COLORS[i].stroke + '">' + esc(p.name) + '</th>'; }).join('') +
+          picks.map(function (p, i) { return '<th>' + lineSample(COLORS[i]) + '<div>' + esc(p.name) + '</div></th>'; }).join('') +
           '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
           '<p class="note">各行で最も高い点数を太字と色で示しています（全員が同点の行は除く）。</p>' +
           '<div class="row" style="gap:8px">' + picks.map(function (p) { return '<button type="button" class="btn quiet" data-open="' + esc(p.id) + '">' + esc(p.name) + 'の詳細</button>'; }).join('') + '</div>' +
@@ -481,7 +492,7 @@
       el.addEventListener('change', function () {
         var id = el.dataset.pick;
         if (el.checked) {
-          if (state.compareIds.length >= 3) { el.checked = false; toast('比較できるのは3人までです'); return; }
+          if (state.compareIds.length >= MAX_COMPARE) { el.checked = false; toast('比較できるのは' + MAX_COMPARE + '人までです'); return; }
           state.compareIds.push(id);
         } else {
           state.compareIds = state.compareIds.filter(function (x) { return x !== id; });

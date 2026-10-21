@@ -11,8 +11,10 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: `${outDir}/${label}-list.png`, fullPage: true });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     if (overflow) errors.push(label + ': page scrolls horizontally');
-    // 比較：3人を選ぶ
-    for (let i = 0; i < 3; i++) { await page.locator("input[data-pick]").nth(i).click(); }
+    // 比較：5人を選ぶ（6人目は選べない）
+    for (let i = 0; i < 6; i++) { await page.locator("input[data-pick]").nth(i).click(); }
+    const picked = await page.$$eval('input[data-pick]:checked', e => e.length);
+    if (picked !== 5) errors.push(label + ': picked ' + picked);
     await page.click('[data-view-go="compare"]');
     await page.screenshot({ path: `${outDir}/${label}-compare.png`, fullPage: true });
     // 詳細
