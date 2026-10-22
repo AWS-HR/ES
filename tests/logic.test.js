@@ -83,3 +83,24 @@ assert(ctx.HEADERS['採点記録'].includes('状態'));
 assert.strictEqual(ctx.SHEET.REQUESTS, undefined, '採点依頼シートは廃止済み');
 
 console.log('OK: すべての検証に合格しました');
+
+// ── 新卒総合職_v2 ──
+const v2 = criteria['新卒総合職_v2'];
+assert(v2, 'v2 がある');
+assert.deepStrictEqual(Array.from(v2.axes, x => x.id), Array.from(c.axes, x => x.id), 'v2 の軸と並びは v1 と同じ');
+assert.deepStrictEqual(Array.from(v2.axes, x => x.weight), Array.from(c.axes, x => x.weight), 'v2 の配点は v1 と同じ');
+assert.strictEqual(v2.rankA, 80); assert.strictEqual(v2.rankB, 65);
+// v1 の行は変えていない（基準は書き換えず追加する）
+assert.strictEqual(ctx.SEED_CRITERIA.filter(r => r[0] === '新卒総合職_v1').length, 8);
+// v2 は5段階すべての文言がある
+ctx.SEED_CRITERIA.filter(r => r[0] === '新卒総合職_v2' && !/^RANK_/.test(r[1]))
+  .forEach(r => r.slice(6, 12).forEach((t, i) => assert(String(t).length > 0, `${r[1]} の${i ? '段階' + (6 - i) : '見るポイント'}が空`)));
+// 初期設定の選考区分は v2 を使う
+ctx.SEED_SEGMENTS.forEach(s => assert.strictEqual(s[3], '新卒総合職_v2'));
+// 運用中シートへの追加：v1 だけあるシートには v2 の8行だけを追加。両方あれば何も追加しない
+let add = ctx.criteriaToAdd_(critRows.filter(r => r['評価基準'] === '新卒総合職_v1'));
+assert.deepStrictEqual(Array.from(add.names), ['新卒総合職_v2']);
+assert.strictEqual(add.rows.length, 8);
+add = ctx.criteriaToAdd_(critRows);
+assert.strictEqual(add.names.length, 0);
+console.log('v2 のテスト OK');
