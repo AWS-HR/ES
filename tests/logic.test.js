@@ -100,7 +100,7 @@ ctx.SEED_SEGMENTS.forEach(s => assert.strictEqual(s[3], ctx.CURRENT_CRITERIA));
 // 運用中シートへの追加：v1 だけあるシートには v2 の8行だけを追加。両方あれば何も追加しない
 let add = ctx.criteriaToAdd_(critRows.filter(r => r['評価基準'] === '新卒総合職_v1'));
 assert.deepStrictEqual(Array.from(add.names), ['新卒総合職_v2', '新卒総合職_v3']);
-assert.strictEqual(add.rows.length, 16);
+assert.strictEqual(add.rows.length, 17);
 add = ctx.criteriaToAdd_(critRows);
 assert.strictEqual(add.names.length, 0);
 console.log('v2 のテスト OK');
@@ -122,3 +122,18 @@ assert.strictEqual(ref.aiLikely, 'ある');
 assert.strictEqual(ref.total, 80, '参考チェックは点数に影響しない');
 assert.strictEqual(ctx.buildApplicant_(Object.assign({}, row, { 'AI作成の可能性': 'たぶん' }), [], criteria).aiLikely, '', 'ある／ない以外は空');
 console.log('v3 のテスト OK');
+
+// ── ランクS（v3）：91以上 S、81以上 A、66以上 B、それ未満 C。v1・v2 は従来どおり ──
+assert.strictEqual(v3.rankS, 91); assert.strictEqual(v3.rankA, 81); assert.strictEqual(v3.rankB, 66);
+assert.strictEqual(c.rankS, null, 'v1 にSはない');
+const r3 = (t) => ctx.rankOf_(t, v3);
+assert.deepStrictEqual([r3(100), r3(91), r3(90), r3(81), r3(80), r3(66), r3(65), r3(0)], ['S', 'S', 'A', 'A', 'B', 'B', 'C', 'C']);
+assert.strictEqual(ctx.rankOf_(95, c), 'A', 'v1 は95点でもA');
+const s14 = ctx.buildApplicant_(Object.assign({}, row, { '評価基準': '新卒総合職_v3' }), det([5, 5, 5, 5, 4, 5]), criteria);
+assert.strictEqual(s14.total, 98); assert.strictEqual(s14.rank, 'S');
+// AI作成の根拠：「ある」のときだけ表示用に返す
+const ai1 = ctx.buildApplicant_(Object.assign({}, row, { 'AI作成の可能性': 'ある', 'AI作成の根拠': '一般論が続く（Q8）\n同じ構成の繰り返し' }), [], criteria);
+assert.deepStrictEqual(Array.from(ai1.aiReasons), ['一般論が続く（Q8）', '同じ構成の繰り返し']);
+const ai0 = ctx.buildApplicant_(Object.assign({}, row, { 'AI作成の可能性': 'ない', 'AI作成の根拠': '何か' }), [], criteria);
+assert.strictEqual(ai0.aiReasons.length, 0);
+console.log('ランクS・AI作成の根拠のテスト OK');

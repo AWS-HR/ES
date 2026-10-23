@@ -62,6 +62,7 @@
   .num { font-variant-numeric: tabular-nums; }
   .total { font-size: 22px; font-weight: 700; }
   .rank { display: inline-block; min-width: 24px; text-align: center; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .rank.S { background: #7A4E00; color: #fff; box-shadow: 0 0 0 2px #F2C94C inset; }
   .rank.A { background: var(--blue-dark); color: #fff; }
   .rank.B { background: var(--blue-soft); color: var(--blue-dark); }
   .rank.C { background: var(--gray-bg); color: #444B55; }
@@ -71,6 +72,8 @@
   .pill.s-通過 { background: var(--ok-bg); color: var(--ok-ink); }
   .pill.s-見送り { background: var(--card); color: var(--muted); border: 1px solid var(--field); }
   .pill.check { background: var(--warn-bg); color: var(--warn-ink); font-weight: 600; }
+  .pill.ai { background: #F1ECFD; color: #4B2596; border: 1px solid #C9B6F2; font-weight: 600; }
+  .aibox { border-left: 4px solid #6532C9; background: #F7F4FE; border-radius: 8px; padding: 10px 12px; }
   .mini { display: flex; align-items: center; gap: 6px; min-width: 64px; }
   .mini .v { width: 12px; font-weight: 500; font-size: 13px; }
   .mini .track { flex: 1; height: 6px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
@@ -174,7 +177,7 @@
     view: 'list',
     currentId: null,
     compareIds: [],
-    filters: { q: '', segment: ACTIVE, rank: '', status: '', sort: 'total' }
+    filters: { q: '', segment: ACTIVE, rank: '', status: '', ai: '', sort: 'total' }
   };
 
   // ─── 共通 ───
@@ -253,6 +256,7 @@
       if (f.segment === ACTIVE && act.indexOf(a.segment) < 0) return false;
       if (f.segment !== ACTIVE && f.segment !== ALL && a.segment !== f.segment) return false;
       if (f.rank && (f.rank === '要確認' ? !a.needsCheck : a.rank !== f.rank)) return false;
+      if (f.ai && a.aiLikely !== f.ai) return false;
       if (f.status && a.status !== f.status) return false;
       if (f.q && a.name.indexOf(f.q) < 0 && a.id.indexOf(f.q) < 0) return false;
       return true;
@@ -308,7 +312,8 @@
           ' aria-label="' + esc(a.name) + 'を比較に追加"></td>' +
         '<td class="num meta">' + (i + 1) + '</td>' +
         '<td><button type="button" class="namebtn" data-open="' + esc(a.id) + '">' + esc(a.name || '（氏名不明）') + '</button>' +
-          '<div class="meta">' + esc(a.segment) + ' ・ ' + esc(a.id) + '</div></td>' +
+          '<div class="meta">' + esc(a.segment) + ' ・ ' + esc(a.id) + '</div>' +
+          (a.aiLikely === 'ある' ? '<span class="pill ai" title="AIで作成した可能性あり（推定）">AI作成の可能性あり</span>' : '') + '</td>' +
         '<td>' + (a.needsCheck ? '<span class="pill check">要確認</span>' :
           '<span class="total num">' + a.total + '</span> <span class="rank ' + a.rank + '">' + a.rank + '</span>') + '</td>' +
         (a.needsCheck ? '<td colspan="' + axesHead.length + '" class="meta">' + esc(a.issue || '採点できませんでした') + '</td>' : cells) +
@@ -316,24 +321,27 @@
         '<td class="meta num">' + esc(String(a.processedAt).slice(5, 10)) + '</td></tr>';
     }).join('');
 
-    var ranks = { A: 0 }, unchecked = 0, needs = 0;
-    list.forEach(function (a) { if (a.rank === 'A') ranks.A++; if (a.status === '未確認') unchecked++; if (a.needsCheck) needs++; });
+    var ranks = { S: 0, A: 0 }, unchecked = 0, needs = 0, ai = 0;
+    list.forEach(function (a) { if (ranks[a.rank] != null) ranks[a.rank]++; if (a.status === '未確認') unchecked++; if (a.needsCheck) needs++; if (a.aiLikely === 'ある') ai++; });
 
     return '' +
       '<div class="row between"><div><h1>応募者一覧</h1><p class="sub">書類選考 ・ AIの点数は判断の補助です。合否は担当者が判断します。</p></div>' +
       '<div class="kpis">' +
         '<div class="kpi"><small>表示中</small><b>' + list.length + '</b> 件</div>' +
-        '<div class="kpi"><small>Aランク</small><b>' + ranks.A + '</b> 件</div>' +
+        '<div class="kpi"><small>S・Aランク</small><b>' + (ranks.S + ranks.A) + '</b> 件</div>' +
         '<div class="kpi"><small>未確認</small><b class="warn">' + unchecked + '</b> 件</div>' +
         (needs ? '<div class="kpi"><small>要確認</small><b class="warn">' + needs + '</b> 件</div>' : '') +
+        (ai ? '<div class="kpi"><small>AI作成の可能性あり</small><b>' + ai + '</b> 件</div>' : '') +
       '</div></div>' +
       scoringPanel() +
       '<form class="card filters" aria-label="絞り込み" onsubmit="return false">' +
         '<div class="field wide"><label for="f-q">氏名・応募IDで検索</label><input id="f-q" type="search" value="' + esc(f.q) + '" placeholder="例：山田"></div>' +
         '<div class="field wide"><label for="f-seg">選考区分</label><select id="f-seg">' + segOpts + '</select></div>' +
         '<div class="field"><label for="f-rank">ランク</label><select id="f-rank">' +
-          option('', 'すべて', f.rank) + option('A', 'A', f.rank) + option('B', 'B', f.rank) + option('C', 'C', f.rank) + option('要確認', '要確認', f.rank) +
+          option('', 'すべて', f.rank) + option('S', 'S', f.rank) + option('A', 'A', f.rank) + option('B', 'B', f.rank) + option('C', 'C', f.rank) + option('要確認', '要確認', f.rank) +
         '</select></div>' +
+        '<div class="field"><label for="f-ai">AI作成の可能性</label><select id="f-ai">' +
+          option('', 'すべて', f.ai) + option('ある', 'ある', f.ai) + option('ない', 'ない', f.ai) + '</select></div>' +
         '<div class="field"><label for="f-status">ステータス</label><select id="f-status">' + option('', 'すべて', f.status) +
           d.statusOptions.map(function (s) { return option(s, s, f.status); }).join('') + '</select></div>' +
         '<div class="field"><label for="f-sort">並び順</label><select id="f-sort">' +
@@ -436,7 +444,10 @@
           '</section>' : '') +
           (a.aiLikely || a.writingNotes.length ? '<section class="card" style="display:flex;flex-direction:column;gap:10px" aria-labelledby="h-ref"><h2 id="h-ref">参考チェック</h2>' +
             '<p class="note" style="margin:0">点数には含めていません。AIの判定は推定です。</p>' +
-            (a.aiLikely ? '<p style="margin:0">AIで作成した可能性：<b>' + esc(a.aiLikely) + '</b></p>' : '') +
+            (a.aiLikely === 'ある' ? '<div class="aibox"><p style="margin:0 0 6px"><span class="pill ai">AIで作成した可能性：ある</span></p>' +
+              (a.aiReasons.length ? '<h3 style="font-size:13px;margin-bottom:4px">そう判断した根拠</h3><ul class="tight">' + a.aiReasons.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '') +
+              '<p class="note" style="margin:6px 0 0">面接で、本人の言葉で具体的な場面を確かめてください。</p></div>'
+            : a.aiLikely ? '<p style="margin:0">AIで作成した可能性：<b>ない</b></p>' : '') +
             (a.writingNotes.length ? '<div><h3 style="font-size:13px;margin-bottom:6px">文章の気になる点</h3><ul class="tight">' + a.writingNotes.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></div>' : '') +
           '</section>' : '') +
           '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2><label for="d-memo">担当者メモ</label></h2>' +
@@ -533,7 +544,7 @@
       });
     });
 
-    var map = { 'f-seg': 'segment', 'f-rank': 'rank', 'f-status': 'status', 'f-sort': 'sort' };
+    var map = { 'f-seg': 'segment', 'f-rank': 'rank', 'f-ai': 'ai', 'f-status': 'status', 'f-sort': 'sort' };
     Object.keys(map).forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', function () { state.filters[map[id]] = el.value; render(); });

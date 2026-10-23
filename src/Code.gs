@@ -23,7 +23,7 @@ var SHEET = {
 var HEADERS = {};
 HEADERS[SHEET.RESULTS] = ['応募ID', '氏名', '選考区分', '評価基準', '総合点', 'ランク', '総評', '強み',
   '次の選考で確認したい点', '記述不足の軸', 'ステータス', '担当者メモ', 'PDFファイルID', 'PDFリンク',
-  '処理日時', '処理状態', '要確認の理由', '文章の気になる点', 'AI作成の可能性'];
+  '処理日時', '処理状態', '要確認の理由', '文章の気になる点', 'AI作成の可能性', 'AI作成の根拠'];
 
 /** 参考チェック（点数には含めない）：AIが作成した可能性の判定 */
 var AI_LIKELY_OPTIONS = ['ある', 'ない'];
@@ -56,6 +56,8 @@ var NO_EVIDENCE = '記述不足';
 var NO_EVIDENCE_LEVEL = 3;
 var DEFAULT_RANK_A = 80;
 var DEFAULT_RANK_B = 65;
+/** ランクSの下限。評価基準シートに RANK_S の行がない基準（v1・v2）にはSランクを付けない */
+var DEFAULT_RANK_S = null;
 var MEMO_MAX_LENGTH = 2000;
 
 // ───────────────────────── 初期データ ─────────────────────────
@@ -195,8 +197,10 @@ var SEED_CRITERIA = [
     '振り返りや反省はあるが、次の行動や改善までつながっていない',
     '結果だけの記述で、振り返りの過程が見えない',
     'うまくいかなかったことを他者や環境のせいにして終わっている', 6],
-  ['新卒総合職_v3', 'RANK_A', 'ランクAの下限（この点数以上）', '', '', 80, '', '', '', '', '', '', 90],
-  ['新卒総合職_v3', 'RANK_B', 'ランクBの下限（この点数以上）', '', '', 65, '', '', '', '', '', '', 91]
+  // ランク：91点以上 S、81〜90点 A、66〜80点 B、65点以下 C（2026-10-23）
+  ['新卒総合職_v3', 'RANK_S', 'ランクSの下限（この点数以上）', '', '', 91, '', '', '', '', '', '', 89],
+  ['新卒総合職_v3', 'RANK_A', 'ランクAの下限（この点数以上）', '', '', 81, '', '', '', '', '', '', 90],
+  ['新卒総合職_v3', 'RANK_B', 'ランクBの下限（この点数以上）', '', '', 66, '', '', '', '', '', '', 91]
 ];
 
 /** 新しい年度・区分で使う評価基準（初期設定で作る選考区分の既定値） */
@@ -298,7 +302,7 @@ function formatSheet_(sh, name) {
   if (name === SHEET.RESULTS) {
     list('ステータス', STATUS_OPTIONS);
     list('処理状態', PROCESS_STATES);
-    wrap(['総評', '強み', '次の選考で確認したい点', '担当者メモ', '要確認の理由', '文章の気になる点'], 260);
+    wrap(['総評', '強み', '次の選考で確認したい点', '担当者メモ', '要確認の理由', '文章の気になる点', 'AI作成の根拠'], 260);
     list('AI作成の可能性', AI_LIKELY_OPTIONS);
     sh.setColumnWidth(col('PDFファイルID'), 120);
   } else if (name === SHEET.DETAILS) {
@@ -311,7 +315,7 @@ function formatSheet_(sh, name) {
   } else if (name === SHEET.CRITERIA) {
     wrap(['見るポイント', '段階5', '段階4', '段階3', '段階2', '段階1'], 240);
     sh.setColumnWidth(col('軸名'), 180);
-    sh.getRange(1, 1).setNote('評価基準を見直すときは、既存の行を書き換えず、新しい名前（例：新卒総合職_v2）で行を追加してください。\n軸ID が RANK_A / RANK_B の行は、ランクの下限点（配点の列）です。');
+    sh.getRange(1, 1).setNote('評価基準を見直すときは、既存の行を書き換えず、新しい名前（例：新卒総合職_v2）で行を追加してください。\n軸ID が RANK_S / RANK_A / RANK_B の行は、ランクの下限点（配点の列）です。RANK_S の行がない基準にはSランクを付けません。');
   } else if (name === SHEET.QUESTIONS) {
     wrap(['設問'], 420);
     sh.setColumnWidth(col('主に読み取る軸ID'), 180);
@@ -523,14 +527,15 @@ function requireUser_() {
 
 // ───────────────────────── データの組み立て（純粋関数） ─────────────────────────
 
-/** 評価基準シートの行から、基準名ごとの { axes, rankA, rankB } を作る */
+/** 評価基準シートの行から、基準名ごとの { axes, rankS, rankA, rankB } を作る */
 function buildCriteria_(rows) {
   var map = {};
   rows.forEach(function (r) {
     var name = str_(r['評価基準']);
     var id = str_(r['軸ID']);
     if (!name || !id) return;
-    var c = map[name] || (map[name] = { name: name, axes: [], rankA: DEFAULT_RANK_A, rankB: DEFAULT_RANK_B });
+    var c = map[name] || (map[name] = { name: name, axes: [], rankS: DEFAULT_RANK_S, rankA: DEFAULT_RANK_A, rankB: DEFAULT_RANK_B });
+    if (id === 'RANK_S') { c.rankS = Number(r['配点']) || DEFAULT_RANK_S; return; }
     if (id === 'RANK_A') { c.rankA = Number(r['配点']) || DEFAULT_RANK_A; return; }
     if (id === 'RANK_B') { c.rankB = Number(r['配点']) || DEFAULT_RANK_B; return; }
     c.axes.push({
@@ -566,6 +571,7 @@ function parseLevel_(value) {
 
 function rankOf_(total, crit) {
   if (total == null) return '';
+  if (crit.rankS != null && total >= crit.rankS) return 'S';
   if (total >= crit.rankA) return 'A';
   if (total >= crit.rankB) return 'B';
   return 'C';
@@ -574,7 +580,7 @@ function rankOf_(total, crit) {
 /** 採点結果の1行と根拠詳細から、画面表示用の応募者データを作る */
 function buildApplicant_(r, details, criteria) {
   var critName = str_(r['評価基準']);
-  var crit = criteria[critName] || { name: critName, axes: [], rankA: DEFAULT_RANK_A, rankB: DEFAULT_RANK_B };
+  var crit = criteria[critName] || { name: critName, axes: [], rankS: DEFAULT_RANK_S, rankA: DEFAULT_RANK_A, rankB: DEFAULT_RANK_B };
   var needsCheck = str_(r['処理状態']) === '要確認';
   var byAxis = {};
   details.forEach(function (d) { byAxis[str_(d['軸ID'])] = d; });
@@ -613,6 +619,7 @@ function buildApplicant_(r, details, criteria) {
     issue: str_(r['要確認の理由']),
     writingNotes: splitLines_(r['文章の気になる点']),
     aiLikely: AI_LIKELY_OPTIONS.indexOf(str_(r['AI作成の可能性'])) >= 0 ? str_(r['AI作成の可能性']) : '',
+    aiReasons: str_(r['AI作成の可能性']) === 'ある' ? splitLines_(r['AI作成の根拠']) : [],
     axes: axes
   };
 }
