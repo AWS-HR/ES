@@ -96,11 +96,29 @@ assert.strictEqual(ctx.SEED_CRITERIA.filter(r => r[0] === '新卒総合職_v1').
 ctx.SEED_CRITERIA.filter(r => r[0] === '新卒総合職_v2' && !/^RANK_/.test(r[1]))
   .forEach(r => r.slice(6, 12).forEach((t, i) => assert(String(t).length > 0, `${r[1]} の${i ? '段階' + (6 - i) : '見るポイント'}が空`)));
 // 初期設定の選考区分は v2 を使う
-ctx.SEED_SEGMENTS.forEach(s => assert.strictEqual(s[3], '新卒総合職_v2'));
+ctx.SEED_SEGMENTS.forEach(s => assert.strictEqual(s[3], ctx.CURRENT_CRITERIA));
 // 運用中シートへの追加：v1 だけあるシートには v2 の8行だけを追加。両方あれば何も追加しない
 let add = ctx.criteriaToAdd_(critRows.filter(r => r['評価基準'] === '新卒総合職_v1'));
-assert.deepStrictEqual(Array.from(add.names), ['新卒総合職_v2']);
-assert.strictEqual(add.rows.length, 8);
+assert.deepStrictEqual(Array.from(add.names), ['新卒総合職_v2', '新卒総合職_v3']);
+assert.strictEqual(add.rows.length, 16);
 add = ctx.criteriaToAdd_(critRows);
 assert.strictEqual(add.names.length, 0);
 console.log('v2 のテスト OK');
+
+// ── 新卒総合職_v3 ──
+const v3 = criteria['新卒総合職_v3'];
+assert(v3, 'v3 がある');
+assert.strictEqual(ctx.CURRENT_CRITERIA, '新卒総合職_v3');
+assert.deepStrictEqual(Array.from(v3.axes, x => x.id), Array.from(c.axes, x => x.id), 'v3 の軸と並びは v1 と同じ');
+assert.deepStrictEqual(Array.from(v3.axes, x => x.weight), Array.from(c.axes, x => x.weight), 'v3 の配点は v1 と同じ');
+ctx.SEED_CRITERIA.filter(r => r[0] === '新卒総合職_v3' && !/^RANK_/.test(r[1]))
+  .forEach(r => r.slice(6, 12).forEach((t, i) => assert(String(t).length > 0, `v3 ${r[1]} の文言が空`)));
+// v2 の行は変えていない
+assert.strictEqual(ctx.SEED_CRITERIA.filter(r => r[0] === '新卒総合職_v2').length, 8);
+// 参考チェックの列（点数には含めない）
+const ref = ctx.buildApplicant_(Object.assign({}, row, { '評価基準': '新卒総合職_v3', '文章の気になる点': '話し言葉「やっぱり」\n敬語の誤り', 'AI作成の可能性': 'ある' }), det([4, 4, 4, 4, 4, 4]), criteria);
+assert.deepStrictEqual(Array.from(ref.writingNotes), ['話し言葉「やっぱり」', '敬語の誤り']);
+assert.strictEqual(ref.aiLikely, 'ある');
+assert.strictEqual(ref.total, 80, '参考チェックは点数に影響しない');
+assert.strictEqual(ctx.buildApplicant_(Object.assign({}, row, { 'AI作成の可能性': 'たぶん' }), [], criteria).aiLikely, '', 'ある／ない以外は空');
+console.log('v3 のテスト OK');

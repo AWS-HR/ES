@@ -24,7 +24,7 @@ function person(id, name, seg, lv, status, extra) {
   return Object.assign({ id, name, segment: seg, criteria: '新卒総合職_v1', total, rank: total >= 80 ? 'A' : total >= 65 ? 'B' : 'C',
     summary: '人との出会いを大切にする姿勢と、一貫した自分の軸が強みです。他者の意見を受け入れた経験は記述が短いため、次の選考で確認してください。',
     strengths: ['人や出会いを大切にする姿勢', '一貫した自分の軸'], checks: ['フィードバックの受け止め方'],
-    status, memo: '', hasPdf: true, processedAt: '2026/10/20 16:30', needsCheck: false, issue: '', axes }, extra || {});
+    status, memo: '', hasPdf: true, processedAt: '2026/10/20 16:30', needsCheck: false, issue: '', writingNotes: [], aiLikely: '', axes }, extra || {});
 }
 const S = '2028年卒 新卒（総合職）', C = '経験者採用';
 const data = {
@@ -34,7 +34,7 @@ const data = {
     last: { state: '完了', finishedAt: '2026/10/20 18:12', result: '採点済み 8件、要確認 1件、残り 0件' } },
   segments: [{ id: 'R2028', name: S, state: '受付中' }, { id: 'R2029', name: '2029年卒 新卒（総合職）', state: '準備中' }, { id: 'CAREER', name: C, state: '受付中' }],
   applicants: [
-    person('ES-2026-0001', '山田 花子', S, [5, 4, 5, 4, 3, 4], '確認済み'),
+    person('ES-2026-0001', '山田 花子', S, [5, 4, 5, 4, 3, 4], '確認済み', { aiLikely: 'ない', writingNotes: ['話し言葉が入っている（「やっぱり」）', '「御社」と「貴社」が混在している'] }),
     person('ES-2026-0004', '鈴木 美咲', S, [4, 5, 4, 4, 4, 3], '未確認'),
     person('ES-2026-0006', '高橋 翔', C, [4, 4, 4, 3, 'x', 4], '未確認'),
     person('ES-2026-0002', '佐藤 健太', S, [5, 3, 3, 4, 4, 3], '通過'),

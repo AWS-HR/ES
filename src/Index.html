@@ -434,6 +434,11 @@
             '</div>' +
             (missing.length ? '<p class="note">記述不足の軸：' + esc(missing.map(function (x) { return x.name; }).join('、')) + '（段階3として計算）</p>' : '') +
           '</section>' : '') +
+          (a.aiLikely || a.writingNotes.length ? '<section class="card" style="display:flex;flex-direction:column;gap:10px" aria-labelledby="h-ref"><h2 id="h-ref">参考チェック</h2>' +
+            '<p class="note" style="margin:0">点数には含めていません。AIの判定は推定です。</p>' +
+            (a.aiLikely ? '<p style="margin:0">AIで作成した可能性：<b>' + esc(a.aiLikely) + '</b></p>' : '') +
+            (a.writingNotes.length ? '<div><h3 style="font-size:13px;margin-bottom:6px">文章の気になる点</h3><ul class="tight">' + a.writingNotes.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></div>' : '') +
+          '</section>' : '') +
           '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2><label for="d-memo">担当者メモ</label></h2>' +
             '<textarea id="d-memo" rows="4" maxlength="2000" placeholder="次の選考で見たいことなどを記入"' + dis + '>' + esc(a.memo) + '</textarea>' +
             (d.canEdit ? '<button type="button" class="btn primary" id="d-save" style="align-self:flex-end">メモを保存</button>' : '<p class="note">閲覧者はメモを編集できません。</p>') +
