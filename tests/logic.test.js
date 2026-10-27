@@ -137,3 +137,12 @@ assert.deepStrictEqual(Array.from(ai1.aiReasons), ['一般論が続く（Q8）',
 const ai0 = ctx.buildApplicant_(Object.assign({}, row, { 'AI作成の可能性': 'ない', 'AI作成の根拠': '何か' }), [], criteria);
 assert.strictEqual(ai0.aiReasons.length, 0);
 console.log('ランクS・AI作成の根拠のテスト OK');
+
+// ── ステータス（2026-10-27 変更） ──
+assert.deepStrictEqual(Array.from(ctx.STATUS_OPTIONS), ['未確認', 'マッチング', '保留(要確認)', 'ミスマッチ']);
+assert.strictEqual(ctx.normalizeStatus_(''), '未確認');
+assert.strictEqual(ctx.normalizeStatus_('通過'), 'マッチング');
+assert.strictEqual(ctx.normalizeStatus_('見送り'), 'ミスマッチ');
+assert.strictEqual(ctx.normalizeStatus_('確認済み'), '保留(要確認)');
+ctx.STATUS_OPTIONS.forEach(s => assert.strictEqual(ctx.normalizeStatus_(s), s));
+console.log('OK: ステータスの検証に合格しました');

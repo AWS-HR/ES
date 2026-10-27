@@ -67,10 +67,15 @@
   .rank.B { background: var(--blue-soft); color: var(--blue-dark); }
   .rank.C { background: var(--gray-bg); color: #444B55; }
   .pill { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
-  .pill.s-未確認 { background: var(--warn-bg); color: var(--warn-ink); }
-  .pill.s-確認済み { background: var(--gray-bg); color: var(--ink-2); }
-  .pill.s-通過 { background: var(--ok-bg); color: var(--ok-ink); }
-  .pill.s-見送り { background: var(--card); color: var(--muted); border: 1px solid var(--field); }
+  /* ステータス：未確認・マッチング（青）・保留(要確認)（黄）・ミスマッチ（赤） */
+  .s-new { background: var(--warn-bg); color: var(--warn-ink); }
+  .s-match { background: #E3ECFC; color: #1E3F91; }
+  .s-hold { background: #FFF4C2; color: #6B5100; }
+  .s-mismatch { background: #FDE6E4; color: #A3221B; }
+  select.plain.s-match { border-color: #8FA9DE; }
+  select.plain.s-hold { border-color: #E3C34D; }
+  select.plain.s-mismatch { border-color: #E59A93; }
+  select.plain.s-new { border-color: #E8B98C; }
   .pill.check { background: var(--warn-bg); color: var(--warn-ink); font-weight: 600; }
   .pill.ai { background: #F1ECFD; color: #4B2596; border: 1px solid #C9B6F2; font-weight: 600; }
   .aibox { border-left: 4px solid #6532C9; background: #F7F4FE; border-radius: 8px; padding: 10px 12px; }
@@ -186,6 +191,10 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  /** ステータスの色分け用のクラス名（ステータス名に「(」などが入るため名前を直接クラスにしない） */
+  function statusClass(s) {
+    return { '未確認': 's-new', 'マッチング': 's-match', '保留(要確認)': 's-hold', 'ミスマッチ': 's-mismatch' }[s] || 's-new';
+  }
   function $(sel) { return document.querySelector(sel); }
   function toast(msg) {
     var t = $('#toast'); t.textContent = msg; t.classList.add('show');
@@ -279,7 +288,7 @@
     if (!s) return '';
     var line;
     if (s.running) {
-      line = '<span class="pill s-未確認">採点中</span><span>' + esc(s.running.startedAt) + ' から採点しています（' + esc(s.running.how) + '）</span>';
+      line = '<span class="pill s-new">採点中</span><span>' + esc(s.running.startedAt) + ' から採点しています（' + esc(s.running.how) + '）</span>';
     } else if (s.last) {
       line = '<span class="meta">前回の採点：' + esc(s.last.finishedAt) + (s.last.state === 'エラー' ? '（エラー）' : '') + ' ' + esc(s.last.result) + '</span>';
     } else {
@@ -317,7 +326,7 @@
         '<td>' + (a.needsCheck ? '<span class="pill check">要確認</span>' :
           '<span class="total num">' + a.total + '</span> <span class="rank ' + a.rank + '">' + a.rank + '</span>') + '</td>' +
         (a.needsCheck ? '<td colspan="' + axesHead.length + '" class="meta">' + esc(a.issue || '採点できませんでした') + '</td>' : cells) +
-        '<td><span class="pill s-' + esc(a.status) + '">' + esc(a.status) + '</span></td>' +
+        '<td><span class="pill ' + statusClass(a.status) + '">' + esc(a.status) + '</span></td>' +
         '<td class="meta num">' + esc(String(a.processedAt).slice(5, 10)) + '</td></tr>';
     }).join('');
 
@@ -424,7 +433,7 @@
           (a.needsCheck ? '<span class="pill check">要確認</span>' :
             '<div class="row" style="align-items:center;gap:12px"><div><div class="meta">総合点</div><div class="bigscore"><b>' + a.total + '</b><span>/ 100</span></div></div>' +
             '<span class="rank ' + a.rank + '" style="font-size:14px;padding:4px 12px">ランク' + a.rank + '</span></div>') +
-          '<div class="field" style="flex:0 0 auto"><label for="d-status">ステータス</label><select id="d-status" class="plain"' + dis + '>' +
+          '<div class="field" style="flex:0 0 auto"><label for="d-status">ステータス</label><select id="d-status" class="plain ' + statusClass(a.status) + '"' + dis + '>' +
             d.statusOptions.map(function (s) { return option(s, s, a.status); }).join('') + '</select></div>' +
           (a.hasPdf ? '<button type="button" class="btn outline" id="d-pdf" style="align-self:flex-end">ESのPDFを開く</button>' : '') +
         '</div>' +
@@ -565,7 +574,7 @@
     var st = document.getElementById('d-status');
     if (st && !st.disabled) st.addEventListener('change', function () {
       var a = byId(state.currentId), v = st.value;
-      call('apiUpdate', [a.id, { status: v }], function (r) { a.status = r.status; toast('ステータスを「' + r.status + '」に変更しました'); });
+      call('apiUpdate', [a.id, { status: v }], function (r) { a.status = r.status; st.className = 'plain ' + statusClass(r.status); toast('ステータスを「' + r.status + '」に変更しました'); });
     });
     var save = document.getElementById('d-save');
     if (save) save.addEventListener('click', function () {

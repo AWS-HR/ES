@@ -35,7 +35,15 @@ HEADERS[SHEET.QUESTIONS] = ['設問セット', '番号', '設問', '主に読み
 HEADERS[SHEET.ACCESS] = ['メールアドレス', '氏名', '役割', '備考'];
 HEADERS[SHEET.RUNS] = ['記録ID', '開始日時', '完了日時', '実行方法', '状態', '結果'];
 
-var STATUS_OPTIONS = ['未確認', '確認済み', '通過', '見送り'];
+var STATUS_OPTIONS = ['未確認', 'マッチング', '保留(要確認)', 'ミスマッチ'];
+/** 2026-10-27 以前のステータス → 新しいステータス */
+var LEGACY_STATUS = { '確認済み': '保留(要確認)', '通過': 'マッチング', '見送り': 'ミスマッチ' };
+
+function normalizeStatus_(v) {
+  var s = str_(v);
+  if (!s) return '未確認';
+  return LEGACY_STATUS[s] || s;
+}
 var PROCESS_STATES = ['採点済み', '要確認'];
 var SEGMENT_STATES = ['受付中', '準備中', '終了'];
 var ROLES = ['管理者', '評価者', '閲覧者', '停止'];
@@ -336,6 +344,29 @@ function formatSheet_(sh, name) {
  * 既存の行は書き換えない。同じ基準名がすでに1行でもあれば、その基準は追加しない（何度実行しても安全）。
  * Apps Script のエディタで、関数「addNewCriteria」を選んで「実行」する。
  */
+/**
+ * 運用中のシートのステータスを新しい4つ（未確認・マッチング・保留(要確認)・ミスマッチ）に移行する。
+ * 選べる値（プルダウン）を入れ替え、古い値（確認済み・通過・見送り）を新しい値に書き換える。何度実行しても同じ結果になる。
+ */
+function migrateStatuses() {
+  var sh = getSpreadsheet_().getSheetByName(SHEET.RESULTS);
+  var col = HEADERS[SHEET.RESULTS].indexOf('ステータス') + 1;
+  var last = sh.getLastRow();
+  var changed = 0;
+  if (last >= 2) {
+    var range = sh.getRange(2, col, last - 1, 1);
+    range.clearDataValidations();
+    var values = range.getValues().map(function (row) {
+      var next = row[0] === '' ? '' : normalizeStatus_(row[0]);
+      if (next !== row[0]) changed++;
+      return [next];
+    });
+    range.setValues(values);
+  }
+  formatSheet_(sh, SHEET.RESULTS);
+  notify_('ステータスを移行しました（書き換え ' + changed + ' 件）。');
+}
+
 function addNewCriteria() {
   var sh = getSpreadsheet_().getSheetByName(SHEET.CRITERIA);
   if (!sh) { notify_('評価基準シートがありません。先に setupSpreadsheet を実行してください。'); return; }
@@ -611,7 +642,7 @@ function buildApplicant_(r, details, criteria) {
     summary: str_(r['総評']),
     strengths: splitLines_(r['強み']),
     checks: splitLines_(r['次の選考で確認したい点']),
-    status: str_(r['ステータス']) || '未確認',
+    status: normalizeStatus_(r['ステータス']),
     memo: str_(r['担当者メモ']),
     hasPdf: !!str_(r['PDFファイルID']),
     processedAt: formatDate_(r['処理日時']),
