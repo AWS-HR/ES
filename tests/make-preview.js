@@ -49,6 +49,7 @@ window.google = { script: { run: (function make(ok, ng) {
     withSuccessHandler: f => make(f, ng), withFailureHandler: f => make(ok, f),
     apiLoad: () => setTimeout(() => ok(${JSON.stringify(data)}), 0),
     apiUpdate: (id, p) => setTimeout(() => ok(p), 0),
+    apiUpdateStatuses: (ids, st) => setTimeout(() => ok({ status: st, updated: ids, missing: [] }), 0),
     apiGetPdf: () => {}
   };
   return api;

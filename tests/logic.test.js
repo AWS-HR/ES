@@ -146,3 +146,19 @@ assert.strictEqual(ctx.normalizeStatus_('見送り'), 'ミスマッチ');
 assert.strictEqual(ctx.normalizeStatus_('確認済み'), '保留(要確認)');
 ctx.STATUS_OPTIONS.forEach(s => assert.strictEqual(ctx.normalizeStatus_(s), s));
 console.log('OK: ステータスの検証に合格しました');
+
+// ── ステータスの一括変更（2026-10-27） ──
+{
+  const rows = [{ '応募ID': 'ES-1', _row: 2 }, { '応募ID': 'ES-2', _row: 3 }, { '応募ID': 'ES-3', _row: 4 }];
+  const plan = ctx.planBulkStatus_(['ES-1', 'ES-3', 'ES-3', ' ', 'ES-9'], 'マッチング', rows);
+  assert.deepStrictEqual(Array.from(plan.rows), [2, 4]);
+  assert.deepStrictEqual(Array.from(plan.updated), ['ES-1', 'ES-3']);
+  assert.deepStrictEqual(Array.from(plan.missing), ['ES-9']);
+  assert.throws(() => ctx.planBulkStatus_(['ES-1'], '通過', rows), /ステータスの値/);
+  assert.throws(() => ctx.planBulkStatus_([], 'マッチング', rows), /選ばれていません/);
+  assert.throws(() => ctx.planBulkStatus_(['', ' '], 'マッチング', rows), /選ばれていません/);
+  const many = Array.from({ length: ctx.BULK_MAX + 1 }, (_, i) => 'ES-' + i);
+  assert.throws(() => ctx.planBulkStatus_(many, 'マッチング', rows), /まで/);
+  assert.strictEqual(typeof ctx.apiUpdateStatuses, 'function');
+  console.log('OK: ステータスの一括変更の検証に合格しました');
+}

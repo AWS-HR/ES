@@ -67,6 +67,7 @@ var DEFAULT_RANK_B = 65;
 /** ランクSの下限。評価基準シートに RANK_S の行がない基準（v1・v2）にはSランクを付けない */
 var DEFAULT_RANK_S = null;
 var MEMO_MAX_LENGTH = 2000;
+var BULK_MAX = 300; // ステータスの一括変更で一度に変えられる人数
 
 // ───────────────────────── 初期データ ─────────────────────────
 
@@ -492,6 +493,46 @@ function folderIdFromUrl_(value) {
   var m = s.match(/\/folders\/([A-Za-z0-9_-]+)/) || s.match(/[?&]id=([A-Za-z0-9_-]+)/);
   if (m) return m[1];
   return /^[A-Za-z0-9_-]{10,}$/.test(s) ? s : '';
+}
+
+/**
+ * 複数の応募者のステータスをまとめて変更する（管理者・評価者のみ）
+ * 戻り値：{ status, updated: [変更した応募ID], missing: [見つからなかった応募ID] }
+ */
+function apiUpdateStatuses(applicantIds, status) {
+  var user = requireUser_();
+  if (EDIT_ROLES.indexOf(user.role) < 0) throw new Error('この操作を行う権限がありません。');
+  var plan = planBulkStatus_(applicantIds, status, null);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = getSpreadsheet_().getSheetByName(SHEET.RESULTS);
+    var col = HEADERS[SHEET.RESULTS].indexOf('ステータス') + 1;
+    var rows = readTable_(SHEET.RESULTS);
+    plan = planBulkStatus_(applicantIds, status, rows);
+    plan.rows.forEach(function (n) { sh.getRange(n, col).setValue(status); });
+    return { status: status, updated: plan.updated, missing: plan.missing };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** 一括変更の入力を確かめ、書き換える行を決める（rows が null なら入力の確認だけ） */
+function planBulkStatus_(applicantIds, status, rows) {
+  if (STATUS_OPTIONS.indexOf(status) < 0) throw new Error('ステータスの値が正しくありません。');
+  if (!Array.isArray(applicantIds) || !applicantIds.length) throw new Error('応募者が選ばれていません。');
+  var ids = [];
+  applicantIds.forEach(function (v) { var id = str_(v); if (id && ids.indexOf(id) < 0) ids.push(id); });
+  if (!ids.length) throw new Error('応募者が選ばれていません。');
+  if (ids.length > BULK_MAX) throw new Error('一度に変更できるのは' + BULK_MAX + '人までです。');
+  if (!rows) return { ids: ids };
+  var rowOf = {};
+  rows.forEach(function (r) { var id = str_(r['応募ID']); if (id && !rowOf[id]) rowOf[id] = r._row; });
+  var plan = { ids: ids, rows: [], updated: [], missing: [] };
+  ids.forEach(function (id) {
+    if (rowOf[id]) { plan.rows.push(rowOf[id]); plan.updated.push(id); } else plan.missing.push(id);
+  });
+  return plan;
 }
 
 /** ステータスと担当者メモを保存する（管理者・評価者のみ） */

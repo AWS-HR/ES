@@ -119,6 +119,12 @@
   .alert { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px 16px; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
   .chips { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .selbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--blue-tint); border: 1px solid var(--blue-light); border-radius: 12px; padding: 12px 16px; }
+  .selbar .count { font-weight: 700; }
+  .selbar .group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .selbar select { height: 44px; border: 1px solid var(--field); border-radius: 8px; padding: 0 10px; background: var(--card); min-width: 0; max-width: 100%; }
+  .selbar .confirm { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; background: var(--card); border-radius: 8px; padding: 10px 12px; }
+  .selbar .spacer { flex: 1 1 0; }
   .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: 999px; border: 2px solid; background: var(--card); }
   .chip button { width: 36px; height: 36px; border: 0; background: transparent; border-radius: 999px; cursor: pointer; color: var(--muted); font-size: 16px; }
   table.cmp { min-width: 480px; font-variant-numeric: tabular-nums; }
@@ -181,7 +187,9 @@
     data: null,
     view: 'list',
     currentId: null,
-    compareIds: [],
+    selectedIds: [],   // 一覧でチェックした応募者（比較・ステータスの一括変更に使う）
+    bulkStatus: '',      // 一括変更で選んだステータス
+    bulkConfirm: false,  // 一括変更の確認を表示中
     filters: { q: '', segment: ACTIVE, rank: '', status: '', ai: '', sort: 'total' }
   };
 
@@ -301,6 +309,39 @@
       '</section>';
   }
 
+  /** 表示中の全員を選ぶ／外すチェックボックス */
+  function pickAllBox(list) {
+    var all = list.length && list.every(function (a) { return state.selectedIds.indexOf(a.id) >= 0; });
+    return '<input type="checkbox" class="chk" id="pick-all"' + (all ? ' checked' : '') + ' aria-label="表示中の応募者をすべて選択">';
+  }
+
+  /** 選択中の応募者への操作（比較・ステータスの一括変更） */
+  function selectionBar(list) {
+    var d = state.data, n = state.selectedIds.length;
+    if (!n) return '';
+    var shown = {};
+    list.forEach(function (a) { shown[a.id] = true; });
+    var hidden = state.selectedIds.filter(function (id) { return !shown[id]; }).length;
+    var tooMany = n > MAX_COMPARE;
+    var bulk = d.canEdit ?
+      '<div class="group"><label for="bulk-status" class="meta">ステータスを</label>' +
+        '<select id="bulk-status">' + option('', '選んでください', state.bulkStatus) +
+          d.statusOptions.map(function (s) { return option(s, s, state.bulkStatus); }).join('') + '</select>' +
+        '<button type="button" class="btn primary" id="bulk-go"' + (state.bulkStatus ? '' : ' disabled') + '>まとめて変更</button></div>' : '';
+    var confirm = state.bulkConfirm ?
+      '<div class="confirm" role="alert"><span><b>' + n + '人</b>のステータスを<span class="pill ' + statusClass(state.bulkStatus) + '">' + esc(state.bulkStatus) + '</span>に変更します。' +
+        (hidden ? '（いまの絞り込みで表示されていない' + hidden + '人を含みます）' : '') + '</span>' +
+        '<span class="group"><button type="button" class="btn primary" id="bulk-ok">変更する</button><button type="button" class="btn quiet" id="bulk-cancel">やめる</button></span></div>' : '';
+    return '<div class="selbar" aria-label="選択中の応募者">' +
+      '<span><span class="count">' + n + '人を選択中</span>' + (hidden ? '<span class="meta">（うち' + hidden + '人は表示外）</span>' : '') + '</span>' +
+      bulk +
+      '<span class="spacer"></span>' +
+      '<span class="group">' +
+        '<button type="button" class="btn outline" data-view-go="compare"' + (tooMany ? ' disabled title="比較できるのは' + MAX_COMPARE + '人までです"' : '') + '>比較画面へ' + (tooMany ? '（' + MAX_COMPARE + '人まで）' : '') + '</button>' +
+        '<button type="button" class="btn quiet" id="pick-clear">選択を解除</button></span>' +
+      confirm + '</div>';
+  }
+
   function viewList() {
     var d = state.data, f = state.filters, list = filtered();
     var axesHead = list.length ? list[0].axes : (d.applicants[0] ? d.applicants[0].axes : []);
@@ -310,7 +351,7 @@
       d.segments.map(function (s) { return option(s.name, s.name + (s.state ? '（' + s.state + '）' : ''), f.segment); }).join('');
 
     var rows = list.map(function (a, i) {
-      var picked = state.compareIds.indexOf(a.id) >= 0;
+      var picked = state.selectedIds.indexOf(a.id) >= 0;
       var cells = a.axes.map(function (ax) {
         return '<td class="kc' + kc(ax.kokoro).slice(1) + '"><div class="mini" title="' + esc(ax.name + '：' + lvText(ax) + '・' + ax.score + '点') + '"><span class="v num">' + (ax.missing ? '–' : ax.level) +
           '</span><div class="track" aria-hidden="true"><div class="bar ' + lvClass(ax) + '" style="width:' + ((ax.missing ? 3 : ax.level) * 20) + '%"></div></div></div>' +
@@ -318,7 +359,7 @@
       }).join('');
       return '<tr>' +
         '<td class="first"><input type="checkbox" class="chk" data-pick="' + esc(a.id) + '"' + (picked ? ' checked' : '') +
-          ' aria-label="' + esc(a.name) + 'を比較に追加"></td>' +
+          ' aria-label="' + esc(a.name) + 'を選択"></td>' +
         '<td class="num meta">' + (i + 1) + '</td>' +
         '<td><button type="button" class="namebtn" data-open="' + esc(a.id) + '">' + esc(a.name || '（氏名不明）') + '</button>' +
           '<div class="meta">' + esc(a.segment) + ' ・ ' + esc(a.id) + '</div>' +
@@ -358,18 +399,17 @@
         '</select></div>' +
       '</form>' +
       (mixed ? '<p class="alert">表示中の応募者に、異なる評価基準で採点されたものが混ざっています。点数を比べるときは選考区分で絞り込んでください。</p>' : '') +
-      (state.compareIds.length ? '<div class="chips"><span class="meta">比較に追加：' + state.compareIds.length + ' / ' + MAX_COMPARE + ' 人</span>' +
-        '<button type="button" class="btn primary" data-view-go="compare">比較画面へ</button></div>' : '') +
+      selectionBar(list) +
       '<div class="tablebox">' + (list.length ?
         '<table class="list"><thead>' +
-        '<tr><th class="first" rowspan="2" style="width:40px"><span class="sr">比較</span></th><th rowspan="2" style="width:40px">順位</th>' +
+        '<tr><th class="first" rowspan="2" style="width:40px">' + pickAllBox(list) + '</th><th rowspan="2" style="width:40px">順位</th>' +
         '<th rowspan="2">氏名 ・ 区分</th><th rowspan="2" style="width:120px">総合点</th>' +
         kokoroGroups(axesHead).map(function (g) { return '<th class="kgroup ' + kc(g.kokoro) + '" colspan="' + g.count + '">' + kTag(g.kokoro) + '</th>'; }).join('') +
         '<th rowspan="2" style="width:96px">ステータス</th><th rowspan="2" style="width:64px">処理日</th></tr>' +
         '<tr>' + axesHead.map(function (ax) { return '<th class="kc' + kc(ax.kokoro).slice(1) + '" style="width:84px">' + esc(ax.short) + '<small>配点' + ax.weight + '</small></th>'; }).join('') + '</tr>' +
         '</thead><tbody>' + rows + '</tbody></table>'
         : '<p class="empty">条件に合う応募者はいません。</p>') + '</div>' +
-      '<p class="note">各評価軸は5段階。総合点は配点 × 段階 ÷ 5 の合計（100点満点）です。「–」は記述不足の軸で、段階3として計算しています。チェックを入れた応募者（最大5人）を比較画面で並べられます。</p>';
+      '<p class="note">各評価軸は5段階。総合点は配点 × 段階 ÷ 5 の合計（100点満点）です。「–」は記述不足の軸で、段階3として計算しています。チェックを入れた応募者は、比較画面で並べる（5人まで）か、ステータスをまとめて変更できます。</p>';
   }
 
   // ─── レーダーチャート ───
@@ -479,7 +519,11 @@
   }
 
   function viewCompare() {
-    var picks = state.compareIds.map(byId).filter(Boolean);
+    var picks = state.selectedIds.map(byId).filter(Boolean);
+    if (picks.length > MAX_COMPARE) {
+      return '<div><h1>応募者の比較</h1><p class="sub">比較できるのは' + MAX_COMPARE + '人までです。</p></div>' +
+        '<div class="card empty">いま' + picks.length + '人を選択しています。一覧で' + MAX_COMPARE + '人以下にしてください。<div style="margin-top:12px"><button type="button" class="btn quiet" data-view-go="list">一覧へ</button></div></div>';
+    }
     if (!picks.length) {
       return '<div><h1>応募者の比較</h1><p class="sub">一覧画面で、比較したい応募者にチェックを入れてください（最大5人）。</p></div>' +
         '<div class="card empty">比較する応募者が選ばれていません。<div style="margin-top:12px"><button type="button" class="btn quiet" data-view-go="list">一覧へ</button></div></div>';
@@ -538,25 +582,56 @@
     app.querySelectorAll('[data-open]').forEach(function (el) { el.addEventListener('click', function () { go('detail', el.dataset.open); }); });
     app.querySelectorAll('[data-view-go]').forEach(function (el) { el.addEventListener('click', function () { go(el.dataset.viewGo); }); });
     app.querySelectorAll('[data-unpick]').forEach(function (el) {
-      el.addEventListener('click', function () { state.compareIds = state.compareIds.filter(function (x) { return x !== el.dataset.unpick; }); render(); });
+      el.addEventListener('click', function () { state.selectedIds = state.selectedIds.filter(function (x) { return x !== el.dataset.unpick; }); render(); });
     });
     app.querySelectorAll('[data-pick]').forEach(function (el) {
       el.addEventListener('change', function () {
         var id = el.dataset.pick;
         if (el.checked) {
-          if (state.compareIds.length >= MAX_COMPARE) { el.checked = false; toast('比較できるのは' + MAX_COMPARE + '人までです'); return; }
-          state.compareIds.push(id);
+          if (state.selectedIds.indexOf(id) < 0) state.selectedIds.push(id);
         } else {
-          state.compareIds = state.compareIds.filter(function (x) { return x !== id; });
+          state.selectedIds = state.selectedIds.filter(function (x) { return x !== id; });
         }
         render();
       });
     });
 
+    var pickAll = document.getElementById('pick-all');
+    if (pickAll) pickAll.addEventListener('change', function () {
+      var ids = filtered().map(function (a) { return a.id; });
+      if (pickAll.checked) ids.forEach(function (id) { if (state.selectedIds.indexOf(id) < 0) state.selectedIds.push(id); });
+      else state.selectedIds = state.selectedIds.filter(function (id) { return ids.indexOf(id) < 0; });
+      state.bulkConfirm = false;
+      render();
+    });
+    var clear = document.getElementById('pick-clear');
+    if (clear) clear.addEventListener('click', function () { state.selectedIds = []; state.bulkConfirm = false; render(); });
+    var bs = document.getElementById('bulk-status');
+    if (bs) bs.addEventListener('change', function () { state.bulkStatus = bs.value; state.bulkConfirm = false; render(); });
+    var bgo = document.getElementById('bulk-go');
+    if (bgo) bgo.addEventListener('click', function () { if (state.bulkStatus) { state.bulkConfirm = true; render(); } });
+    var bcancel = document.getElementById('bulk-cancel');
+    if (bcancel) bcancel.addEventListener('click', function () { state.bulkConfirm = false; render(); });
+    var bok = document.getElementById('bulk-ok');
+    if (bok) bok.addEventListener('click', function () {
+      var ids = state.selectedIds.slice(), status = state.bulkStatus;
+      bok.disabled = true;
+      call('apiUpdateStatuses', [ids, status], function (r) {
+        r.updated.forEach(function (id) { var a = byId(id); if (a) a.status = r.status; });
+        state.selectedIds = [];
+        state.bulkConfirm = false;
+        state.bulkStatus = '';
+        render();
+        toast(r.updated.length + '人のステータスを「' + r.status + '」に変更しました' +
+          (r.missing.length ? '（' + r.missing.length + '人は見つかりませんでした。最新の状態に更新してください）' : ''));
+      });
+      setTimeout(function () { if (document.body.contains(bok)) bok.disabled = false; }, 8000);
+    });
+
     var map = { 'f-seg': 'segment', 'f-rank': 'rank', 'f-ai': 'ai', 'f-status': 'status', 'f-sort': 'sort' };
     Object.keys(map).forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.addEventListener('change', function () { state.filters[map[id]] = el.value; render(); });
+      if (el) el.addEventListener('change', function () { state.filters[map[id]] = el.value; state.bulkConfirm = false; render(); });
     });
     var q = document.getElementById('f-q');
     if (q) q.addEventListener('input', function () {

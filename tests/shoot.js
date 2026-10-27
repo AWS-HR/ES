@@ -11,11 +11,28 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: `${outDir}/${label}-list.png`, fullPage: true });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     if (overflow) errors.push(label + ': page scrolls horizontally');
-    // 比較：5人を選ぶ（6人目は選べない）
+    // 一括変更：全員を選ぶ → 比較は押せない → ステータスをまとめて変更
+    await page.click('#pick-all');
+    const all = await page.$$eval('input[data-pick]', e => e.length);
+    const allPicked = await page.$$eval('input[data-pick]:checked', e => e.length);
+    if (all !== allPicked) errors.push(label + ': pick-all ' + allPicked + '/' + all);
+    if (!(await page.isDisabled('.selbar [data-view-go="compare"]'))) errors.push(label + ': compare enabled with ' + all);
+    await page.selectOption('#bulk-status', 'マッチング');
+    await page.click('#bulk-go');
+    await page.waitForSelector('#bulk-ok');
+    await page.screenshot({ path: `${outDir}/${label}-bulk.png`, fullPage: true });
+    if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) errors.push(label + ': bulk bar scrolls horizontally');
+    await page.click('#bulk-ok');
+    await page.waitForFunction(() => !document.querySelector('.selbar'));
+    const matched = await page.$$eval('table.list tbody .pill.s-match', e => e.length);
+    if (matched !== all) errors.push(label + ': bulk updated ' + matched + '/' + all);
+    // 比較：5人を選ぶ（6人選ぶと比較は押せない）
     for (let i = 0; i < 6; i++) { await page.locator("input[data-pick]").nth(i).click(); }
+    if (!(await page.isDisabled('.selbar [data-view-go="compare"]'))) errors.push(label + ': compare enabled with 6');
+    await page.locator("input[data-pick]").nth(5).click();
     const picked = await page.$$eval('input[data-pick]:checked', e => e.length);
     if (picked !== 5) errors.push(label + ': picked ' + picked);
-    await page.click('[data-view-go="compare"]');
+    await page.click('.selbar [data-view-go="compare"]');
     await page.screenshot({ path: `${outDir}/${label}-compare.png`, fullPage: true });
     // 詳細
     await page.click('[data-open]');
